@@ -44,7 +44,6 @@ vector<string> parsePipe(string cmd)
 void execute_ext_cmd(string cmd)
 {
 	string orig = cmd;
-	// vector<char *> args;
 	vector<string> args;
 	string delim = " ";
 	while(cmd.size()>0){
@@ -52,9 +51,7 @@ void execute_ext_cmd(string cmd)
 		int pos = cmd.find(delim);
 		cerr<<"got pos = "<<pos<<endl;
 		if(pos!=string::npos){
-			// char *argument = (char *)(cmd.substr(0,pos)).c_str();
 			try{
-				// strcpy(argument,(char *)removeSpace(cmd.substr(0,pos)).c_str());
 				string argument = removeSpace(cmd.substr(0,pos));
 				if(argument.size()!=0){
 					cerr<<"A"<<argument<<"A vec size "<<args.size()<<endl;
@@ -99,7 +96,6 @@ void execute_ext_cmd(string cmd)
 	}
 	execvp(exec_args[0],exec_args);
 	perror("Invalid Command");
-	// cerr<<orig<<endl;
 }
 
 void parseInputOutput(string cmd)
@@ -172,7 +168,7 @@ int main()
 	char* command = new char[CMD_SIZE];
 	while(true)
 	{
-		cout<<"$ "<<flush;
+		cout<<"$ ";
 		cin.getline(command,CMD_SIZE);
 		string cmd(command);
 		if(strcmp(command,"quit")==0)
@@ -189,15 +185,20 @@ int main()
 		if(num_pipes==0){
 			pid_t pid = fork();
 			if(pid==0){
-				// if(background){
-				// 	int fileid = open("/tmp/input.txt",O_WRONLY|O_CREAT|O_TRUNC,S_IRWXU);
-				// 	dup2(fileid,STDIN_FILENO);
-				// }
-				parseInputOutput(piped_cmds[0]);
+				if(background){
+					close(STDIN_FILENO);
+					close(STDERR_FILENO);
+					if((pid = fork())==0){
+						setsid();
+						parseInputOutput(piped_cmds[0]);
+					}
+					else exit(0);
+				}
+				else parseInputOutput(piped_cmds[0]);
 			}
 			else{
 				if(!background)	
-					wait(NULL);
+					waitpid(pid,NULL,0);
 			}
 				
 		}
@@ -209,8 +210,11 @@ int main()
 					exit(1);
 				}
 			}
-			for(int i=0;i<=num_pipes;i++){	
-				if(fork()==0){
+			for(int i=0;i<=num_pipes;i++){
+				pid_t pid = fork();	
+				if(pid == 0){
+					if(background)
+						setpgid(0,0);
 					if(i==0){
 						dup2(pipes[i][1],STDOUT_FILENO);
 						close(pipes[i][1]);
@@ -236,11 +240,15 @@ int main()
 					}
 				}
 				else{
-					if(!background)
-						wait(NULL);
+					if(!background){
+						waitpid(pid,NULL,0);
 						if(i!=num_pipes){
 							close(pipes[i][1]);
 						}
+					}
+					else{
+						setpgid(pid,0);
+					}
 				}
 			}
 		}
