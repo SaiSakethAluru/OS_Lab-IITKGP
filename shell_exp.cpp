@@ -30,13 +30,13 @@ vector<string> parsePipe(string cmd)
 	while(cmd.length()>0){
 		int pos = cmd.find(delim);
 		if(pos!=string::npos){
-			cerr<<"pushing "<<cmd.substr(0,pos)<<endl;
+			/*cerr<<"pushing "<<cmd.substr(0,pos)<<endl*/;
 			piped_cmds.push_back(cmd.substr(0,pos));
 			cmd.erase(0,cmd.find(delim)+delim.length());
 		}
 		else break;
 	}
-	cerr<<"pushing "<<cmd<<endl;	
+	/*cerr<<"pushing "<<cmd<<endl;*/	
 	piped_cmds.push_back(cmd);
 	return piped_cmds;
 }
@@ -47,52 +47,52 @@ void execute_ext_cmd(string cmd)
 	vector<string> args;
 	string delim = " ";
 	while(cmd.size()>0){
-		cerr<<"X"<<cmd<<"X\n";
+		/*cerr<<"X"<<cmd<<"X\n"*/;
 		int pos = cmd.find(delim);
-		cerr<<"got pos = "<<pos<<endl;
+		/*cerr<<"got pos = "<<pos<<endl*/;
 		if(pos!=string::npos){
 			try{
 				string argument = removeSpace(cmd.substr(0,pos));
 				if(argument.size()!=0){
-					cerr<<"A"<<argument<<"A vec size "<<args.size()<<endl;
+					/*cerr<<"A"<<argument<<"A vec size "<<args.size()<<endl*/;
 					args.push_back(argument);
 				}
-				else cerr<<"Argument is blank"<<endl;
+				else /*cerr<<"Argument is blank"<<endl*/;
 			}
 			catch(...){
-				cerr<<"Bug here"<<endl;
+				/*cerr<<"Bug here"<<endl*/;
 			}
-			cerr<<"Y"<<cmd<<"Y"<<endl;
+			/*cerr<<"Y"<<cmd<<"Y"<<endl*/;
 			try{
 				cmd.erase(0,cmd.find(delim)+delim.length());
 			}
 			catch(...){
-				cerr<<"Bug 2 here"<<endl;
+				/*cerr<<"Bug 2 here"<<endl*/;
 
 			}
-			cerr<<"Y"<<cmd<<"Y"<<endl;
+			/*cerr<<"Y"<<cmd<<"Y"<<endl*/;
 		}
 		else {
-			cerr<<"Breaking"<<endl;
+			/*cerr<<"Breaking"<<endl*/;
 			break;
 		}
 	}
-	cerr<<"XY"<<cmd<<"X\n";	
+	/*cerr<<"XY"<<cmd<<"X\n";*/	
 	if(cmd.size()!=0){
 		args.push_back(removeSpace(cmd));
-		cerr<<"print here "<<args[args.size()-1]<<"yes"<<endl;
+		/*cerr<<"print here "<<args[args.size()-1]<<"yes"<<endl*/;
 	}
-	else cerr<<"End argument is blank"<<endl;
+	else /*cerr<<"End argument is blank"<<endl*/;
 	char** exec_args = new char* [args.size()+1];
 	for(int i=0;i<args.size();i++){
 		exec_args[i] = new char[args[i].size()+1];
 		strcpy(exec_args[i],args[i].c_str());
 	}
 	exec_args[args.size()] = NULL;
-	cerr<<"Exec_arg_0 "<<exec_args[0]<<endl;
+	/*cerr<<"Exec_arg_0 "<<exec_args[0]<<endl*/;
 	for(int i=0;i<args.size()-1;i++)
 	{
-		cerr<<i<<' '<<args[i]<<endl;
+		/*cerr<<i<<' '<<args[i]<<endl*/;
 	}
 	execvp(exec_args[0],exec_args);
 	perror("Invalid Command");
@@ -104,7 +104,7 @@ void parseInputOutput(string cmd)
 	int greaterThan = cmd.find(">");
 	if(lessThan==string::npos){
 		if(greaterThan==string::npos){
-			cerr<<"Exucuting cmd "<<cmd<<endl;
+			/*cerr<<"Exucuting cmd "<<cmd<<endl*/;
 			execute_ext_cmd(cmd);
 		}
 		else{
@@ -139,9 +139,9 @@ void parseInputOutput(string cmd)
 				// cmd.erase(remove_if(inputfilename.begin(),inputfilename.end(),isspace),cmd.end());
 				inputfilename = removeSpace(inputfilename);
 				outputfilename = cmd.substr(greaterThan+1);
-				cerr<<"input file = "<<inputfilename<<endl;
-				cerr<<"output file = "<<outputfilename<<endl;
-				cerr<<"exec_cmd = "<<exec_cmd<<endl;
+				/*cerr<<"input file = "<<inputfilename<<endl*/;
+				/*cerr<<"output file = "<<outputfilename<<endl*/;
+				/*cerr<<"exec_cmd = "<<exec_cmd<<endl*/;
 				outputfilename = removeSpace(outputfilename);
 			}
 			else{
@@ -149,9 +149,9 @@ void parseInputOutput(string cmd)
 				outputfilename = cmd.substr(greaterThan+1,lessThan-greaterThan-1);
 				inputfilename = cmd.substr(lessThan+1);
 				inputfilename = removeSpace(inputfilename);
-				cerr<<"input file = "<<inputfilename<<endl;
-				cerr<<"output file = "<<outputfilename<<endl;
-				cerr<<"exec_cmd = "<<exec_cmd<<endl;
+				/*cerr<<"input file = "<<inputfilename<<endl*/;
+				/*cerr<<"output file = "<<outputfilename<<endl*/;
+				/*cerr<<"exec_cmd = "<<exec_cmd<<endl*/;
 				outputfilename = removeSpace(outputfilename);
 			}
 			int inputfileid = open(inputfilename.c_str(),O_RDONLY);
@@ -185,16 +185,7 @@ int main()
 		if(num_pipes==0){
 			pid_t pid = fork();
 			if(pid==0){
-				if(background){
-					close(STDIN_FILENO);
-					close(STDERR_FILENO);
-					if((pid = fork())==0){
-						setsid();
-						parseInputOutput(piped_cmds[0]);
-					}
-					else exit(0);
-				}
-				else parseInputOutput(piped_cmds[0]);
+				parseInputOutput(piped_cmds[0]);
 			}
 			else{
 				if(!background)	
@@ -213,8 +204,11 @@ int main()
 			for(int i=0;i<=num_pipes;i++){
 				pid_t pid = fork();	
 				if(pid == 0){
-					if(background)
-						setpgid(0,0);
+					if(background){
+						// setpgid(0,0);
+						//setsid();
+						// daemon(1,1);
+					}
 					if(i==0){
 						dup2(pipes[i][1],STDOUT_FILENO);
 						close(pipes[i][1]);
@@ -247,7 +241,10 @@ int main()
 						}
 					}
 					else{
-						setpgid(pid,0);
+						waitpid(pid,NULL,WNOHANG);
+						if(i!=num_pipes){
+							close(pipes[i][1]);
+						}
 					}
 				}
 			}
