@@ -47,31 +47,25 @@ void execute_ext_cmd(string cmd)
 	// vector<char *> args;
 	vector<string> args;
 	string delim = " ";
-	FILE *fptr;
 	while(cmd.size()>0){
 		cerr<<"X"<<cmd<<"X\n";
 		int pos = cmd.find(delim);
 		cerr<<"got pos = "<<pos<<endl;
 		if(pos!=string::npos){
 			// char *argument = (char *)(cmd.substr(0,pos)).c_str();
-			fptr = fopen("debug.txt","a");
 			try{
 				// strcpy(argument,(char *)removeSpace(cmd.substr(0,pos)).c_str());
 				string argument = removeSpace(cmd.substr(0,pos));
 				if(argument.size()!=0){
 					cerr<<"A"<<argument<<"A vec size "<<args.size()<<endl;
 					args.push_back(argument);
-					cerr<<"after push size = "<<args.size()<<endl;
-					cerr<<"after push "<<args[0]<<endl;
 				}
 				else cerr<<"Argument is blank"<<endl;
 			}
 			catch(...){
 				cerr<<"Bug here"<<endl;
 			}
-			// cerr<<"print here "<<args[0]<<"yes"<<endl;
 			cerr<<"Y"<<cmd<<"Y"<<endl;
-			fprintf(fptr, "Y%sY\n", cmd.c_str());
 			try{
 				cmd.erase(0,cmd.find(delim)+delim.length());
 			}
@@ -80,12 +74,9 @@ void execute_ext_cmd(string cmd)
 
 			}
 			cerr<<"Y"<<cmd<<"Y"<<endl;
-			fprintf(fptr, "Y%sY\n",cmd.c_str());
-			fclose(fptr);
 		}
 		else {
 			cerr<<"Breaking"<<endl;
-			// fclose(fptr);
 			break;
 		}
 	}
@@ -181,19 +172,29 @@ int main()
 	char* command = new char[CMD_SIZE];
 	while(true)
 	{
-		cout<<"$ ";
+		cout<<"$ "<<flush;
 		cin.getline(command,CMD_SIZE);
 		string cmd(command);
 		if(strcmp(command,"quit")==0)
 			exit(0);
-		int background = (cmd.find("&")==string::npos)?0:1;
+		// int background = (cmd.find("&")==string::npos)?0:1;
+		int background=0;
+		if(cmd.find("&")!=string::npos){
+			background = 1;
+			cmd.erase(cmd.find("&"));
+		}
 		vector<string> args;
 		vector<string> piped_cmds = parsePipe(cmd);
 		int num_pipes = piped_cmds.size()-1;
 		if(num_pipes==0){
 			pid_t pid = fork();
-			if(pid==0)
+			if(pid==0){
+				// if(background){
+				// 	int fileid = open("/tmp/input.txt",O_WRONLY|O_CREAT|O_TRUNC,S_IRWXU);
+				// 	dup2(fileid,STDIN_FILENO);
+				// }
 				parseInputOutput(piped_cmds[0]);
+			}
 			else{
 				if(!background)	
 					wait(NULL);
@@ -214,14 +215,14 @@ int main()
 						dup2(pipes[i][1],STDOUT_FILENO);
 						close(pipes[i][1]);
 						execute_ext_cmd(piped_cmds[i]);
-						// parseInputOutput(piped_cmds[i]);
+						parseInputOutput(piped_cmds[i]);
 						exit(0);
 					}
 					else if(i==num_pipes){
 						dup2(pipes[i-1][0],STDIN_FILENO);
 						close(pipes[i-1][0]);
-						execute_ext_cmd(piped_cmds[i]);
-						// parseInputOutput(piped_cmds[i]);
+						// execute_ext_cmd(piped_cmds[i]);
+						parseInputOutput(piped_cmds[i]);
 						exit(0);
 					}
 					else{
@@ -229,14 +230,17 @@ int main()
 						dup2(pipes[i][1],STDOUT_FILENO);
 						close(pipes[i-1][0]);
 						close(pipes[i][1]);
-						execute_ext_cmd(piped_cmds[i]);
-						// parseInputOutput(piped_cmds[i]);
+						// execute_ext_cmd(piped_cmds[i]);
+						parseInputOutput(piped_cmds[i]);
 						exit(0);
 					}
 				}
 				else{
 					if(!background)
 						wait(NULL);
+						if(i!=num_pipes){
+							close(pipes[i][1]);
+						}
 				}
 			}
 		}
