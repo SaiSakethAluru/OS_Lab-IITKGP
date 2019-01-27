@@ -1,2 +1,11 @@
-Enter num: 
-41
+abc.txt
+a.out
+Assignment 1
+debug.txt
+in.txt
+out.txt
+shell2.cpp
+shell.cpp
+shell_exp.cpp
+temp
+temp.c
