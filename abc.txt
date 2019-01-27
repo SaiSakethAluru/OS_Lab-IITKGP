@@ -1,9 +1,0 @@
-a.out
-debug.txt
-in.txt
-temp
-shell2.cpp
-out.txt
-shell_exp.cpp
-temp.c
-shell.cpp
