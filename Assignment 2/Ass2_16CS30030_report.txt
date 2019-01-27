@@ -1,0 +1,23 @@
+﻿Name:                 Sai Saketh Aluru
+Roll No.         16CS30030
+Group No.         41
+
+
+Assignment 2: Implementation of a rudimentary command-line interpreter running on the Linux operating system
+
+
+The shell is written in c++ language and consists of various stages of parsing the given input and executing relevant steps.
+1. First, the command is taken as a single line input along with spaces using cin.getline() function. If the command entered it “quit”, we immediately exit the shell program, else we process it further.
+2. It is then searched to see if there is any ‘&’. If it is found, it indicates a background process and a flag variable is set accordingly ( to be used later).
+3. Then, the entire string is parsed and broken into a vector of individual commands that are given as piped commands by the user. 
+4. If the list contains only one command, i.e there were no pipes in the given input, then the given command is executed normally after doing necessary input/output redirection if any (discussed later).
+5. Else, we create a 2-D array for creating n-1 pipes, where n is the number of pipe separated commands. We then initialise the pipes and loop over the commands executing them.
+6. For each command in the list of pipe separated commands, we parse them for any input output redirection and then execute them.
+7. For parsing the commands for input/output redirection, we first search for the presence of ‘>’ and ‘<’ symbols in the command. When we find these characters, we then break the string into parts using the substr() method into either 2 or 3 parts, depending on the redirections present.
+8. First part consists of the part of command before the first ‘>’ or ‘<’, i.e. corresponding to the actual command that is to be executed. This is then executed by using an execvp call with NULL terminated list of arguments.
+9. The second(and third) part consist of the input or output file names, whichever is given or both in case when both are present. These files are then opened (created if not present for output redirection).
+10. After opening the required files, the file descriptor table is altered and stdin file descriptor is replaced by input file descriptor (if input redirection is given) and stdout file descriptor is replaced by output file descriptor( if output redirection is given). 
+11. After doing the necessary redirections, the call to execvp is made with NULL terminated list of command line arguments.
+12. While the child process makes the execvp call, the parent process, i.e. the process taking the input from the user is either waiting ( if the command is not a background command, i.e. there is no ‘&’ in the given input) or resumes execution and waits for the next command input from the user ( if it is a background command, i.e. it has a ‘&’ in it).
+13. If the given command is meant to be a non-background process ( which is known by the flag set at the beginning), the parent process is put to wait using the waitpid() function call. After the child process is terminated, the parent process resumes, and closes any open pipes leftover by the previous child process. 
+14. If the given command is a parent process, the parent does not wait.
