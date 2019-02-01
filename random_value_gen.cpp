@@ -6,37 +6,41 @@
 #include <fstream>
 #define LAMBDA 0.4
 using namespace std;
-vector<int> cpu_bursts(int n);
+vector<int> generate_uniform(int n);
 vector<int> generate_exponential(int n);
+double fcfs_awt(vector<pair<int,int> > &processes);
+bool sort_sjf(pair<int,int> a,pair<int,int> b);
+double non_preemptive_sjf_atn(vector<pair<int,int> > p);
 
 int main()
 {
 	int n;
 	cin>>n;
-	vector<int> burst_times = cpu_bursts(n);
+	vector<int> burst_times = generate_uniform(n);
 	vector<int> arrival_times = generate_exponential(n);
-	vector<int> hist_uni (20,0);
-	vector<int> hist_exp (10,0);
 	ofstream fout;
 	fout.open("cpu_times.txt");
 	for(int i=0;i<n;i++){
 		fout<<arrival_times[i]<<"\t"<<burst_times[i]<<endl;
+		// cout<<arrival_times[i]<<"\t"<<burst_times[i]<<endl;
 	}
 	fout.close();
+	vector<pair<int,int> > processes;
 	for(int i=0;i<n;i++){
-		hist_uni[burst_times[i]-1]++;
-		hist_exp[arrival_times[i]]++;
+		// processes.push_back(pair<int,int>(arrival_times[i],burst_times[i]));
+		int a,b;
+		cin>>a>>b;
+		processes.push_back(pair<int,int>(a,b));
 	}
-	for (int i=0; i<20; ++i) {
-    	cout << i+1<<" "<<hist_uni[i]<<" :"<< std::string(hist_uni[i],'*') << std::endl;
-  	}
-	for (int i=0; i<10; ++i) {
-    	cout << i+1<<" "<<hist_exp[i]<<" :"<<std::string(hist_exp[i],'*') << std::endl;
-  	}
+
+	double fcfs_avg_awt = fcfs_awt(processes);
+	cout<<"FCFS average turn around time = "<<fcfs_avg_awt<<endl;
+	double sjf_avg = non_preemptive_sjf_atn(processes);
+	cout<<"Non-preemptive SJF ATT = "<<sjf_avg<<endl;
   	return 0;
 }
 
-vector<int> cpu_bursts(int n)
+vector<int> generate_uniform(int n)
 {
 	vector<int> v;
 	srand(time(NULL));
@@ -46,38 +50,107 @@ vector<int> cpu_bursts(int n)
 	return v;
 }
 
-// vector<int> generate_exponential(int n)
-// {
-// 	default_random_engine generator;
-// 	exponential_distribution<double> distribution(LAMBDA);
-// 	vector<int> p(n);
-// 	float max_val = -1;
-// 	for (int i=0; i<n; ++i) {
-// 	    double number = distribution(generator);
-// 	    cout<<(int)(number*100)<<endl;
-// 	    p.push_back((int)(number*100));
-// 	    if(number > max_val)
-// 	    	max_val = (number*100);
-//   	}
-//   	for(int i=0;i<n;i++){
-//   		p[i] = ((float)p[i]/max_val)*10 ;
-//   	}
-//   	return p;
-// }
 vector<int> generate_exponential(int n)
 {
-	vector<int> exp_nums;
+	vector<int> arrival_times;
+	arrival_times.push_back(0);
+	// vector<int> exp_nums;
 	srand(time(NULL));
-	int i=0;
+	int i=1;
 	while(i<n){
 		double uni_rand = (float)rand() / (RAND_MAX + 1.0);
 		if(uni_rand != 0){
 			double val = -log(uni_rand) / LAMBDA;
 			if(val <=10){
-				exp_nums.push_back(val);
+				// exp_nums.push_back(val);
+				int new_val = arrival_times[arrival_times.size()-1]+val;
+				arrival_times.push_back(new_val);
 				i++;
 			}
 		}
 	}
-	return exp_nums;
+	return arrival_times;
 }
+
+double fcfs_awt(vector<pair<int,int> > &processes)
+{
+	int n = processes.size();
+	vector<int> wait_times;
+	// vector<int> turnaround_times;
+	int total_turnaround_time = processes[0].second;
+	wait_times.push_back(0);
+	for(int i=1;i<n;i++){
+		/*
+			For a given process i, waittime
+			wt[i] = (bt[0] + bt[1] +...... bt[i-1]) - at[i]
+			i.e, wt[i+1] = wt[i] + at[i] + bt[i] - at[i+1]
+			or, wt[i] = wt[i-1] + at[i-1] + bt[i-1] -at[i]
+			Turn around time of a process = wait time + burst time.
+		*/
+		int wait_time = wait_times[i-1] + processes[i-1].first + processes[i-1].second - processes[i].first;
+		wait_times.push_back(wait_time);
+		total_turnaround_time += (wait_time + processes[i].second);
+	}
+	// for(int i=0;i<n;i++){
+	// 	cout<<wait_times[i]<<" ";
+	// }
+	// cout<<endl<<total_turnaround_time<<endl;
+	return (double)total_turnaround_time/(double)n;
+
+}
+
+// bool operator<(pair<int,int> a,pair<int,int> b)
+// {
+// 	return a.second>b.second;
+// }
+bool compare(pair<int,int> a,pair<int,int> b)
+{
+	return a.second>b.second;
+}
+
+double non_preemptive_sjf_atn(vector<pair<int,int> > p)
+{
+	// sort(p.begin(),p.end(),sort_sjf);
+
+	int turnaround_time = 0;
+
+	int current_time = 0;
+
+	priority_queue<pair<int,int>, vector<pair<int,int> >,bool(*)(pair<int,int>,pair<int,int>)> heap(compare);
+	// priority_queue<pair<int,int> > heap;
+	/*For any given prcess, the turnaround time is deined as the total
+	time from the arrival till the end of completion
+	The variable current_time is essentially the sum of all the CPU bursts
+	and for each process, we subtarct the completion time of the ith process
+	from the arrival time to finally end up with the turnaround time for that 
+	particular process.*/
+	int n = p.size();
+	int i=-1;
+	int j=0;
+	while(++i<n)
+	{
+		
+		for(;j<n && p[j].first<=current_time;j++)
+		{
+			heap.push(p[j]);
+		}
+
+		pair<int,int> curr = heap.top();
+		heap.pop();
+		current_time += curr.second;
+		turnaround_time += current_time - curr.first;
+	}
+
+	//Then we return the average
+	return (double)turnaround_time/(p.size());
+}
+
+/*// double round_robin(vector<int> &arrival_times, vector<int> &burst_times)
+double round_robin(vector<pair<int,int> > &processes)
+{
+	int n = arrival_times.size();
+	
+	while(1){
+		
+	}
+}*/
