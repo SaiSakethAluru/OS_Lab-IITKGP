@@ -10,12 +10,8 @@ vector<int> generate_uniform(int n);
 vector<int> generate_exponential(int n);
 double fcfs_awt(vector<pair<int,int> > &processes);
 double non_preemptive_sjf_atn(vector<pair<int,int> > p);
-<<<<<<< HEAD
 double round_robin(vector<pair<int,int> > &processes);
-||||||| merged common ancestors
-=======
 double preemptive_sjf_atn(vector<pair<int,int> > p);
->>>>>>> 49bedaf055ee41160be3c469877324178a5b6222
 
 int main()
 {
@@ -37,16 +33,13 @@ int main()
 		// cin>>a>>b;
 		// processes.push_back(pair<int,int>(a,b));
 	}
-<<<<<<< HEAD
-	fout.open("data.dat");
 	double fcfs_avg_awt = fcfs_awt(processes);
 	cout<<fcfs_avg_awt<<" ";
 	double sjf_avg = non_preemptive_sjf_atn(processes);
 	cout<<sjf_avg<<" ";
 	double round_robin_avg_awt = round_robin(processes);
 
-	cout<<round_robin_avg_awt<<endl;
-	fout.close();
+	cout<<round_robin_avg_awt<<" ";
 
 	double psjf_avg = preemptive_sjf_atn(processes);
 	cout<<psjf_avg<<endl;
@@ -197,7 +190,6 @@ double round_robin(vector<pair<int,int> > &processes)
 		}
 		else current_time++;
 	}
-<<<<<<< HEAD
 	return (double)total_turnaround_time/(double)n;
 }
 
@@ -270,4 +262,3 @@ double preemptive_sjf_atn(vector<pair<int,int> > p)
 	//Then we return the average
 	return (double)turnaround_time/(p.size());
 }
->>>>>>> 49bedaf055ee41160be3c469877324178a5b6222
