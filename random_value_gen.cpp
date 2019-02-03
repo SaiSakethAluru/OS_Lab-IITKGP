@@ -44,7 +44,7 @@ int main()
 	cout<<round_robin_avg_awt<<" ";
 
 	double psjf_avg = preemptive_sjf_atn(processes);
-	cout<<psjf_avg<<endl;
+	cout<<psjf_avg<<" ";
 	double hrn_avg = hrn_att(processes);
 	cout<<hrn_avg<<" ";
 	double prehrn_avg = pre_hrn_att(processes);
