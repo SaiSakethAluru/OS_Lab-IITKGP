@@ -17,7 +17,6 @@ double preemptive_sjf_atn(vector<pair<int,int> > p);
 double hrn_att(vector<pair<int,int> > p);
 double pre_hrn_att(vector<pair<int,int> > p);
 
-
 int main()
 {
 	int n;
@@ -239,6 +238,12 @@ double preemptive_sjf_atn(vector<pair<int,int> > p)
 			heap.push(make_pair(p[j],p[j].second));
 		}
 		if(heap.empty()){
+			current_time = p[j].first;
+			continue;
+		}
+
+		if(heap.empty())
+		{	
 			current_time = p[j].first;
 			continue;
 		}
