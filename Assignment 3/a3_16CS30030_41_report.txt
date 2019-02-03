@@ -1,0 +1,53 @@
+﻿OPERATING SYSTEM LABORATORY
+Name: Sai Saketh Aluru
+Roll No. 16CS30030
+Group No. 41
+
+
+Assignment 3: Simulation of CPU Scheduling Algorithms
+
+
+Generating the processes:
+1. In this assignment, we first generated a given number (N) of process arrival times and burst times. 
+2. The burst times are sampled from a uniform random distribution in the range [1,20] (both inclusive). 
+3. The arrival times are calculated using an exponential distribution of inter arrival times. The first process is taken to arrive at time 0. The other processes’ arrival times are then found out by adding a value found from an exponential distribution of range 0-10 to the arrival time of the previous process.
+4. We generate this exponential distribution of some mean lambda (0.4) in our case using the property that, if R is a uniform random variable in range (0,1), the the random variable given by 
+                                (-1.0/lambda) * ln(R)
+        follows exponential distribution. This way, all the arrival times are then calculated.
+              
+Simulation:
+1. We then use these process arrival times and burst times values to simulate various simulation stragies and compute the average turn around time for these processes.
+2. The turnaround time of a process is defined as the time between its arrival and its completion. In other words, it is the sum of its waiting time and its burst time.
+3. For the first stategy, we implement a First Come First Serve (FCFS) scheduling algorithm, where the processes are executed in increasing order of their arrival times. For each process the turnaround time is equal to the time required to execute all the processes before it( the waittime) plus its own burst time. Using this we find the average burst time
+4. In the next strategy, Shortest Job First, we first arrange the given processes in a min heap, sorted according to their burst times. Now in a loop, we pop the first element ( minimum burst time process) and compute its turnaround time. After knowing the total turnaround time, we find the average turnaround time.
+5. The next one is a Preemptive version of the Shortest Job First algorithm. Here, whenever a new process appears, we add it to the heap along with the existing process. This way, if any of the new processes has a shorter burst time, that is executed first. Since it is a preemptive algorithm, we need to store the remaining time left for each process as well. This is done by maintaining each process as a three tuple, (arrival time, burst time, remaining time). In C++, we implement this as a pair< pair<int, int>, int>.
+6. Next algorithm that we implemented is a Round Robin algorithm with time quantum 2 units. All the processes are maintained in a FIFO queue. Each time, a process is taken from the front of the queue and executed for delta time. Then it is added to the end of the queue. If any process arrives while a process is being executed, these processes are added to the end of the queue as well before pushing this process back again. Once a process has remaining time less than equal to the time quantum, it is executed till completion and discarded from the queue. After a process completes execution, we then calculate its turnaround time by subtracting its arrival time from the time elapsed till now from the start. 
+7. The last implementation is the Highest Response Ratio Next algorithm. In this algorithm, we implement a non-preemptive strategy that is similar to a priority scheduling algorithm, where we use the Response Ratio as the priority. 
+Response Ratio = (Time since arrival + Burst Time) / Burst Time 
+Using this metric, we choose the process with highest RR each time and complete its execution and calculate its turnaround time. In order to choose the process with maximum RR, we maintain each process as a three tuple, (arrival time, burst time, response ratio). In C++ we use pair< pair<int,int>, double> as the data structure, where response ration is stored as the double data type since its a fraction. 
+1. We also implemented a preemptive version of this HRRN algorithm. Here we are computing the Response Ratio of each process at every second and choosing the one with the hightest RR. Since the rate of increase of response ratio is different for different burst times and arrival times, the order of processes based on response ratio keeps changing. For implementing this, we stored each process as a four tuple, (arrival time, burst time, remaining time, response ratio). 
+
+Plotting:
+1. In order to compile and run the process for N = 10,50,100 processes, each 10 times and to generate a plot ( bar graph) for each case comparing the scheduling algorithms, we used a shell script.
+2. In the shell script, we first compile the program and then run it for the required iterations using a for loop over N = 10,50,100 and a while loop of 10 iterations.In each of these iterations, we add the generated average turnaround times into a variable and then find the average of these ATT values. 
+3. Using gnuplot, we plotted these average ATT values for each case of the N = 10,50,100 on a separate bar graph for each of these scheduling algorithms.
+
+
+Theoretically Expected Lower Bound on the turn-around time for Non-Preemptive FCFS algorithm:
+        For the non-preemptive FCFS algorithms, we execute the processes in the order in which they arrive. If any process arrives during the execution of another process, this new process goes into a wait queue.
+        Since turnaround time of a process is defined as the difference between arrival time and completion time, or in other terms, the sum of its waiting time and burst time, 
+
+
+                        Turn around time = Wait time + Burst time.
+
+
+Since the burst time of a process is determined by the nature of the process ( randomly in this case) and is not dependent on the scheduling algorithm itself, we can only tweak the wait time to manipulate the turnaround time. Theoretically the lowest possible waitime for a process in FCFS is when each process arrives after the previous one has finished executed. In such a case, the wait time for each process is 0 and thus its turnaround time is equal to its burst time. Thus the average/ Expected lower bound of the turnaround time of the Non-Preemptive FCFS is equal to the average of the burst times of all the processes. 
+        
+        In our simulations, we obtained the average values of burst times and the average turn around times as follows:
+For N = 10,         average burst time         = 11.1        units
+                     FCFS ATT                         = 36.3        units
+For N = 50,         average burst time         = 11.26 units
+                FCFS ATT                  = 231.14 units
+For N = 100,         average burst time        = 11.35 units
+                FCFS ATT                = 496.53 units
+Here, these values for one iteration of the algorithm. Thus from the values calculated and the values obtained, we observe that the value of the average turnaround time for Non-Preemptive FCFS is always greater than equal to the Average Burst Time, which is the computed lower bound of the FCFS Average turnaround time. Thus the simulation satisfies this condition.
