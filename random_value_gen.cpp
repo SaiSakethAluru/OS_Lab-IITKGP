@@ -226,6 +226,10 @@ double preemptive_sjf_atn(vector<pair<int,int> > p)
 		{
 			heap.push(make_pair(p[j],p[j].second));
 		}
+		if(heap.empty()){
+			current_time = p[j].first;
+			continue;
+		}
 
 		pair<pair<int,int>,int> curr = heap.top();
 		heap.pop();
