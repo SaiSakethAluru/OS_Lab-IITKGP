@@ -11,6 +11,7 @@ vector<int> generate_exponential(int n);
 double fcfs_awt(vector<pair<int,int> > &processes);
 bool sort_sjf(pair<int,int> a,pair<int,int> b);
 double non_preemptive_sjf_atn(vector<pair<int,int> > p);
+double preemptive_sjf_atn(vector<pair<int,int> > p);
 
 int main()
 {
@@ -33,10 +34,12 @@ int main()
 		processes.push_back(pair<int,int>(a,b));
 	}
 
-	double fcfs_avg_awt = fcfs_awt(processes);
-	cout<<"FCFS average turn around time = "<<fcfs_avg_awt<<endl;
-	double sjf_avg = non_preemptive_sjf_atn(processes);
-	cout<<"Non-preemptive SJF ATT = "<<sjf_avg<<endl;
+	// double fcfs_avg_awt = fcfs_awt(processes);
+	// cout<<"FCFS average turn around time = "<<fcfs_avg_awt<<endl;
+	// double sjf_avg = non_preemptive_sjf_atn(processes);
+	// cout<<"Non-preemptive SJF ATT = "<<sjf_avg<<endl;
+	double psjf_avg = preemptive_sjf_atn(processes);
+	cout<<"preemptive SJF ATT = "<<psjf_avg<<endl;
   	return 0;
 }
 
@@ -110,8 +113,6 @@ bool compare(pair<int,int> a,pair<int,int> b)
 
 double non_preemptive_sjf_atn(vector<pair<int,int> > p)
 {
-	// sort(p.begin(),p.end(),sort_sjf);
-
 	int turnaround_time = 0;
 
 	int current_time = 0;
@@ -154,3 +155,72 @@ double round_robin(vector<pair<int,int> > &processes)
 		
 	}
 }*/
+
+bool compare(pair<pair<int,int>,int> a,pair<pair<int,int>,int> b)
+{
+	return a.second>b.second;
+}
+
+
+double preemptive_sjf_atn(vector<pair<int,int> > p)
+{
+	int turnaround_time = 0;
+
+	int current_time = 0;
+
+	priority_queue<pair<pair<int,int>,int>,
+					vector<pair<pair<int,int>,int> >,
+					bool(*)(pair<pair<int,int>,int>,pair<pair<int,int>,int>)> heap(compare);
+	// priority_queue<pair<int,int> > heap;
+	/*For any given prcess, the turnaround time is deined as the total
+	time from the arrival till the end of completion
+	The variable current_time is essentially the sum of all the CPU bursts
+	and for each process, we subtarct the completion time of the ith process
+	from the arrival time to finally end up with the turnaround time for that 
+	particular process.*/
+	int n = p.size();
+	int i=0;
+	int j=0;
+	while(i<n)
+	{
+		
+		for(;j<n && p[j].first<=current_time;j++)
+		{
+			heap.push(make_pair(p[j],p[j].second));
+		}
+
+		pair<pair<int,int>,int> curr = heap.top();
+		heap.pop();
+		if(j == n)
+		{
+			current_time += curr.second;
+			turnaround_time += current_time - curr.first.first;
+			i++;
+		}
+		else
+		{
+			if(p[j].first < current_time + curr.second)
+			{	
+				curr.second -= p[j].first - current_time;
+				current_time = p[j].first;
+				if(curr.second!=0)
+					heap.push(curr);
+				else
+				{
+					turnaround_time += current_time - curr.first.first;
+					i++;
+				}
+			}
+			else
+			{
+				current_time += curr.second;
+				turnaround_time += current_time - curr.first.first;
+				i++;  
+			}
+		}
+
+	}
+
+	//Then we return the average
+	return (double)turnaround_time/(p.size());
+}
