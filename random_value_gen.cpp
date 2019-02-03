@@ -9,8 +9,8 @@ using namespace std;
 vector<int> generate_uniform(int n);
 vector<int> generate_exponential(int n);
 double fcfs_awt(vector<pair<int,int> > &processes);
-bool sort_sjf(pair<int,int> a,pair<int,int> b);
 double non_preemptive_sjf_atn(vector<pair<int,int> > p);
+double round_robin(vector<pair<int,int> > &processes);
 double preemptive_sjf_atn(vector<pair<int,int> > p);
 double hrn_att(vector<pair<int,int> > p);
 double pre_hrn_att(vector<pair<int,int> > p);
@@ -35,17 +35,21 @@ int main()
 		// cin>>a>>b;
 		// processes.push_back(pair<int,int>(a,b));
 	}
-
 	double fcfs_avg_awt = fcfs_awt(processes);
-	cout<<"FCFS average turn around time = "<<fcfs_avg_awt<<endl;
+	cout<<fcfs_avg_awt<<" ";
 	double sjf_avg = non_preemptive_sjf_atn(processes);
-	cout<<"Non-preemptive SJF ATT = "<<sjf_avg<<endl;
+	cout<<sjf_avg<<" ";
+	double round_robin_avg_awt = round_robin(processes);
+
+	cout<<round_robin_avg_awt<<" ";
+
 	double psjf_avg = preemptive_sjf_atn(processes);
-	cout<<"preemptive SJF ATT = "<<psjf_avg<<endl;
+	cout<<psjf_avg<<endl;
 	double hrn_avg = hrn_att(processes);
-	cout<<"HRRN ATT = "<<hrn_avg<<endl;
+	cout<<hrn_avg<<" ";
 	double prehrn_avg = pre_hrn_att(processes);
-	cout<<"Preemptive HRRN ATT = "<<prehrn_avg<<endl;
+	cout<<prehrn_avg<<endl;
+
   	return 0;
 }
 
@@ -152,15 +156,50 @@ double non_preemptive_sjf_atn(vector<pair<int,int> > p)
 	return (double)turnaround_time/(p.size());
 }
 
-/*// double round_robin(vector<int> &arrival_times, vector<int> &burst_times)
+// double round_robin(vector<int> &arrival_times, vector<int> &burst_times)
 double round_robin(vector<pair<int,int> > &processes)
 {
-	int n = arrival_times.size();
-	
-	while(1){
-		
+	int delta = 2;
+	queue<pair<pair<int,int>, int> > jobs;
+	int n = processes.size();
+	int current_time = 0;
+	int i=n;
+	int j=0;
+	int total_turnaround_time = 0;
+	while(i){
+		for(;j<n && processes[j].first <= current_time;j++){
+			// cout<<"pushing "<<j+1<<" at "<<current_time<<endl;
+			jobs.push(pair<pair<int,int>, int> (processes[j],processes[j].second));
+		}
+		if(!jobs.empty()){
+			pair<pair<int,int>, int> curr = jobs.front();
+			jobs.pop();
+			if(curr.second > delta){
+				// cout<<"current_time = "<<current_time<<endl;
+				// cout<<curr.first.first<<" "<<curr.first.second<<" "<<curr.second<<endl;
+				curr.second -= delta;
+				current_time += delta;
+				for(;j<n && processes[j].first <= current_time;j++){
+					// cout<<"pushing "<<j+1<<" at "<<current_time<<endl;
+					jobs.push(pair<pair<int,int>, int> (processes[j],processes[j].second));
+				}
+				jobs.push(curr);
+			}
+			else if(curr.second > 0){
+				// cout<<"comp "<< curr.second<<endl;
+				// cout<<"current_time = "<<current_time<<endl;
+				// cout<<curr.first.first<<" "<<curr.first.second<<" "<<curr.second<<endl;
+				current_time += curr.second;
+				total_turnaround_time += (current_time - curr.first.first);
+				curr.second = 0;
+				i--;
+			}
+		}
+		else current_time++;
 	}
-}*/
+	return (double)total_turnaround_time/(double)n;
+}
+
 
 bool compare(pair<pair<int,int>,int> a,pair<pair<int,int>,int> b)
 {
@@ -193,6 +232,10 @@ double preemptive_sjf_atn(vector<pair<int,int> > p)
 		for(;j<n && p[j].first<=current_time;j++)
 		{
 			heap.push(make_pair(p[j],p[j].second));
+		}
+		if(heap.empty()){
+			current_time = p[j].first;
+			continue;
 		}
 
 		if(heap.empty())
@@ -237,13 +280,10 @@ double preemptive_sjf_atn(vector<pair<int,int> > p)
 	return (double)turnaround_time/(p.size());
 }
 
-
 bool compare2(pair<pair<int,int>,double> a,pair<pair<int,int>,double> b)
 {
 	return a.second<b.second;
 }
-
-
 
 double hrn_att(vector<pair<int,int> > p)
 {
@@ -371,36 +411,6 @@ double pre_hrn_att(vector<pair<int,int> > p)
 		pair<pair<int,int>,pair<int, double> > curr = heap.top();
 		heap.pop();
 
-		// if(j == n)
-		// {
-		// 	current_time += curr.second.first;
-		// 	turnaround_time += current_time - curr.first.first;
-		// 	i++;
-		// }
-		// else
-		// {
-		// 	if(p[j].first < current_time + curr.second.first)
-		// 	{	
-		// 		curr.second.first -= p[j].first - current_time;
-		// 		current_time = p[j].first;
-		// 		if(curr.second.first!=0)
-		// 			heap.push(curr);
-		// 		else
-		// 		{
-		// 			turnaround_time += current_time - curr.first.first;
-		// 			i++;
-		// 		}
-		// 	}
-		// 	else
-		// 	{
-		// 		current_time += curr.second.first;
-		// 		turnaround_time += current_time - curr.first.first;
-		// 		current_time = p[j].first;
-		// 		i++;  
-		// 	}
-		// }
-
-
 		current_time +=1;
 		curr.second.first--;
 		if(curr.second.first == 0)
@@ -420,4 +430,3 @@ double pre_hrn_att(vector<pair<int,int> > p)
 	//Then we return the average
 	return (double)turnaround_time/(p.size());
 }
-
