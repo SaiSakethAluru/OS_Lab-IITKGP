@@ -393,14 +393,14 @@ double pre_hrn_att(vector<pair<int,int> > p)
 	{
 		// First two while loops for updating the response ratio
 		/*
-		Response Ratio(RR) = (Remaining Time + Wait time)/(Remaining Time)*/
+		Response Ratio(RR) = (Burst Time + Wait time)/(Burst Time)*/
 		while(!heap.empty())
 		{
 			pair<pair<int,int>,pair<int,double> > curr = heap.top();
 			heap.pop();
 			curr.second.second = 
-					(double)(curr.second.first/*Reamining time*/+((current_time - curr.first.first)/*Total time from arrival*/
-							-(curr.first.second-curr.second.first))/* Time it was executing*/)/curr.second.first;
+					(double)(curr.first.second/*Reamining time*/+((current_time - curr.first.first)/*Total time from arrival*/
+							-(curr.first.second-curr.second.first))/* Time it was executing*/)/curr.first.second;
 			heap_temp.push(curr);
 		}
 
