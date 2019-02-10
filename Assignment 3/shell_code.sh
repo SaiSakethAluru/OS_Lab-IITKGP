@@ -1,5 +1,5 @@
 #! /bin/bash
-g++ random_value_gen.cpp
+g++ a3_41.cpp
 fcfs_tot=0
 sjf_tot=0
 rrb_tot=0
