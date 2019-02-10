@@ -5,9 +5,10 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/types.h>
-#define BUFFSIZE 5
+#define BUFFSIZE 500
 #define NUM_THREADS 10
-#define NUMS_PER_THREAD 10
+#define NUMS_PER_THREAD 10000
+#define delta 1000
 using namespace std;
 
 int buffer[BUFFSIZE];
@@ -110,12 +111,14 @@ void * reporter(void* param)
 		if(prev_thread == -1)
 			cout<<"Execution of "<<current_thread<<" has started"<<endl;
 		else
+		if(current_thread != -2)
 			cout<<"The execution has changed from "<<prev_thread<< " to "<<current_thread<<endl;
 		if(status[prev_thread] == 2 || status[prev_thread] == 3)
 			cout<<"Thread "<<prev_thread<<" has terminated"<<endl;
 		if(current_thread != -1 &&current_thread != -2  && (status[current_thread] == 2 || status[current_thread] == 3))
 			cout<<"Thread "<<current_thread<<" has terminated"<<endl;
-		prev_thread = current_thread;
+		if(current_thread != -2)
+			prev_thread = current_thread;
 		// pthread_mutex_unlock(&sig_mutex);
 
 	}
@@ -133,8 +136,7 @@ void* scheduler(void* param)
 	pthread_mutex_lock(&sig_mutex);
 	// cout<<"Pushed ids into queue"<<endl;
 	pthread_mutex_unlock(&sig_mutex);
-	int delta = 1000;
-	while(!scheduler_q.empty()){
+	while(1){
 		// if(pthread_mutex_lock(&sig_mutex)!=0){
 		// 	perror("Lock failed in sched");
 		// 	exit(1);
@@ -152,7 +154,7 @@ void* scheduler(void* param)
 		// cout<<" the number of 1s left are "<<n<<" 0s is "<<m<<" whereas the buffer count is "<<buffer_count<<endl;
 		if(n == 0 && buffer_count <= 0 && m==0){
 			// break;
-			// cout<<" The weirdest infinite loop with 1s = "<<n<<" 0s is "<<m<<" and buffer count "<<buffer_count<<endl;
+			// cout<<"The weirdest infinite loop with 1s = "<<n<<" 0s is "<<m<<" and buffer count "<<buffer_count<<endl;
 			current_thread = -2;
 			pthread_mutex_unlock(&sig_mutex);
 			pthread_exit(0);
