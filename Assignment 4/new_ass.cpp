@@ -103,7 +103,7 @@ void * reporter(void* param)
 		// pthread_mutex_lock(&sig_mutex);
 		if(current_thread == -2)
 		{
-			cout<<" Thread "<<prev_thread<<" has terminated"<<endl;
+			cout<<"Consumer Thread "<<prev_thread<<" has terminated"<<endl;
 			pthread_exit(0);
 		}
 		if( current_thread == prev_thread)
@@ -113,10 +113,18 @@ void * reporter(void* param)
 		else
 		if(current_thread != -2)
 			cout<<"The execution has changed from "<<prev_thread<< " to "<<current_thread<<endl;
-		if(status[prev_thread] == 2 || status[prev_thread] == 3)
-			cout<<"Thread "<<prev_thread<<" has terminated"<<endl;
-		if(current_thread != -1 &&current_thread != -2  && (status[current_thread] == 2 || status[current_thread] == 3))
-			cout<<"Thread "<<current_thread<<" has terminated"<<endl;
+		if((status[prev_thread] == 2 || status[prev_thread] == 3) && current_thread != -2){
+			if(status[prev_thread]==2)
+				cout<<"Producer ";
+			else cout<<"Consumer ";
+			cout<<"thread "<<prev_thread<<" has terminated"<<endl;
+		}
+		// if(current_thread != -1 &&current_thread != -2  && (status[current_thread] == 2 || status[current_thread] == 3)){
+		// 	if(status[current_thread]==2)
+		// 		cout<<"Producer ";
+		// 	else cout<<"Consumer ";
+		// 	cout<<"Thread "<<current_thread<<" has terminated"<<endl;
+		// }
 		if(current_thread != -2)
 			prev_thread = current_thread;
 		// pthread_mutex_unlock(&sig_mutex);
@@ -212,9 +220,14 @@ int main()
 	for(i=0;i<NUM_THREADS;i++){
 		int* id = new int;
 		*id = i;
-		if(rand()%2==0)
+		if(rand()%2==0){
 			status[i] = 0;
-		else status[i] = 1;
+			cout<<"Consumer thread "<<i<<" is created"<<endl;
+		}
+		else{ 
+			status[i] = 1;
+			cout<<"Producer thread "<<i<<" is created"<<endl;
+		}
 		// status[i] = initializer[i];
 		pthread_create(&mythreads[i],NULL,runner,(void *)id);
 	}
@@ -226,7 +239,9 @@ int main()
 	}
 
 	pthread_join(sched_thread,NULL);
-	// pthread_join(reporter_thread,NULL);
+	cout<<"Scheduler thread has terminated"<<endl;
+	pthread_join(reporter_thread,NULL);
+	cout<<"Reporter thread has terminated"<<endl;
 	cout<<"Everything done"<<endl;
 	return 0;
 }
