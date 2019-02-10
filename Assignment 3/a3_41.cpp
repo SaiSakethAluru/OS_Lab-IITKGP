@@ -448,6 +448,7 @@ double pre_hrn_att(vector<pair<int,int> > p)
 		{
 			pair<pair<int,int>,pair<int,double> > curr = heap.top();
 			heap.pop();
+
 			curr.second.second = (double)(curr.first.second/*Burst time*/+((current_time - curr.first.first)/*Total time from arrival*/
 							-(curr.first.second-curr.second.first))/* Time it was executing*/)/curr.first.second;
 			heap_temp.push(curr);
