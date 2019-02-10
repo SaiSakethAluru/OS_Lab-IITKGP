@@ -22,7 +22,7 @@ int current_thread = -1;
 
 void signal_handler(int signo)
 {
-	if(signo == SIGUSR2){
+	if(signo == SIGUSR1){
 		pause();
 	}
 	else{
@@ -37,8 +37,8 @@ void * runner (void * param)
 	// struct sigaction act;
 	// memset(&act,0,sizeof(act));
 	// act.sa_handler = signal_handler;
-	// sigaction(SIGUSR1,&act,0);
 	// sigaction(SIGUSR2,&act,0);
+	// sigaction(SIGUSR1,&act,0);
 	pause();
 	if(status[id]==1){
 		while(1){
@@ -104,20 +104,28 @@ void * reporter(void* param)
 		if(current_thread == -2)
 		{
 			cout<<"Consumer Thread "<<prev_thread<<" has terminated"<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
 			pthread_exit(0);
 		}
-		if( current_thread == prev_thread)
+		if( current_thread == prev_thread){
 			continue;
-		if(prev_thread == -1)
+		}
+		if(prev_thread == -1){
 			cout<<"Execution of "<<current_thread<<" has started"<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
+		}
 		else
-		if(current_thread != -2)
+		if(current_thread != -2){
 			cout<<"The execution has changed from "<<prev_thread<< " to "<<current_thread<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
+			
+		}
 		if((status[prev_thread] == 2 || status[prev_thread] == 3) && current_thread != -2){
 			if(status[prev_thread]==2)
 				cout<<"Producer ";
 			else cout<<"Consumer ";
 			cout<<"thread "<<prev_thread<<" has terminated"<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
 		}
 		// if(current_thread != -1 &&current_thread != -2  && (status[current_thread] == 2 || status[current_thread] == 3)){
 		// 	if(status[current_thread]==2)
@@ -175,24 +183,24 @@ void* scheduler(void* param)
 		
 		int curr = scheduler_q.front();
 		scheduler_q.pop();
-		// printf("Going to send signal SIGUSR1 to id %d\n",curr);
-		// cout<<"Going to send signal SIGUSR1 to id "<<curr<<endl;
+		// printf("Going to send signal SIGUSR2 to id %d\n",curr);
+		// cout<<"Going to send signal SIGUSR2 to id "<<curr<<endl;
 		// pthread_t curr_id = mythreads[curr];
 		if(status[curr]== 0 || status[curr]== 1)
-			pthread_kill(mythreads[curr],SIGUSR1);
+			pthread_kill(mythreads[curr],SIGUSR2);
 		current_thread = curr;
-		// cout<<"Sent signal SIGUSR1 to "<<curr<<endl;
+		// cout<<"Sent signal SIGUSR2 to "<<curr<<endl;
 		pthread_mutex_unlock(&sig_mutex);
-		// printf("Sent signal SIGUSR1 to id %d, tid %ld\n",curr, mythreads[curr]);
+		// printf("Sent signal SIGUSR2 to id %d, tid %ld\n",curr, mythreads[curr]);
 		usleep(delta);
 		
 		pthread_mutex_lock(&sig_mutex);
-		// cout<<"Going to send signal SIGUSR2 to id "<<curr<<endl;
+		// cout<<"Going to send signal SIGUSR1 to id "<<curr<<endl;
 		if(status[curr]== 0 || status[curr]== 1)
-			pthread_kill(mythreads[curr],SIGUSR2);
-		// printf("Going to send signal SIGUSR2 to id %d\n",curr);
-		// printf("Sent signal SIGUSR2 to id %d, tid %ld\n",curr, mythreads[curr]);
-		// cout<<"Sent signal SIGUSR2 to "<<curr<<endl;
+			pthread_kill(mythreads[curr],SIGUSR1);
+		// printf("Going to send signal SIGUSR1 to id %d\n",curr);
+		// printf("Sent signal SIGUSR1 to id %d, tid %ld\n",curr, mythreads[curr]);
+		// cout<<"Sent signal SIGUSR1 to "<<curr<<endl;
 		if(status[curr] != 2 && status[curr] != 3){
 			scheduler_q.push(curr);
 			// printf("Pushing it back\n");
@@ -214,8 +222,8 @@ int main()
 	srand(time(NULL));
 	int initializer[] = {0,0,0,0,0,0,0,1,0,0};
 	int id,i;
-	signal(SIGUSR1,signal_handler);
 	signal(SIGUSR2,signal_handler);
+	signal(SIGUSR1,signal_handler);
 
 	for(i=0;i<NUM_THREADS;i++){
 		int* id = new int;
