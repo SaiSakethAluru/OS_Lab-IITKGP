@@ -5,233 +5,252 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/types.h>
-#define BUFFSIZE 50
-#define NUM_THREADS 2
-#define NUMS_PER_THREAD 10
+// Max size of the shared buffer
+#define BUFFSIZE 500
+// Number of worker threads to create
+#define NUM_THREADS 10
+// Random numbers produced per producer thread
+#define NUMS_PER_THREAD 1000
+// Time quantum of roundrobin (in ms)
+#define delta 1000
 using namespace std;
 
-int buffer[BUFFSIZE];
-vector<int> status(NUM_THREADS);
-int buffer_count = 0;
-int in = 0;
-int out = 0;
-pthread_mutex_t sig_mutex;
-pthread_mutexattr_t ma;
+vector<int> status(NUM_THREADS);	// the status vector
+/*
+	status = 0 --> active consumer
+	status = 1 --> active producer
+	status = 2 --> terminated/dead producer
+	status = 3 --> terminated/dead consumer
+*/
+int buffer[BUFFSIZE];				// The buffer to store the produced items
+int buffer_count = 0;				// the number of items currently in the buffer
+int in = 0;							// the current first for producing
+int out = 0;						// the current index for consumption
+pthread_mutex_t sig_mutex;			// the varialbe for mutex lock
+pthread_mutexattr_t ma;				// the attribute for mutex lock
+int current_thread = -1;			// the current executing thread
 
-void *producer(void* param)
+//The signal handler function to stop or play threads
+void signal_handler(int signo)
 {
-	// int id = *(int *)param;
-	// free(param);
-	int id = 0;
-	printf("pid = %d\n",id );
-	sigset_t signal_set;
-	int sig,flag = 0;
-	int nums_left = NUMS_PER_THREAD;
-	struct timespec timeout = {0,1};
-	while(1){
-		sigfillset(&signal_set);
-		// sig = sigtimedwait(&signal_set,NULL,&timeout);
-		sig = sigwaitinfo(&signal_set,NULL);
-
-		// printf("Prod Thread id= %d, Signal value = %d\n",id,sig);
-		if(sig == SIGUSR1)
-			flag = 1;
-		else if(sig == SIGUSR2)
-			flag = 0;
-		switch(flag){
-			case 1:
-				if(pthread_mutex_lock(&sig_mutex)!=0){
-					perror("Lock failed in prod");
-					exit(1);
-				}
-				if(sig>0)
-					printf("Prod Thread with id %d got SIGUSR1 and locked the buffer\n",id);
-				if(nums_left && buffer_count != BUFFSIZE){
-					int new_num = rand()%1000+1;
-					printf("Prod Thread with id %d produced %d\n",id,new_num);
-					buffer[in] = new_num;
-					in = (in+1)%BUFFSIZE;
-					buffer_count++;
-					printf("buffer_count = %d\n",buffer_count);
-					nums_left--;
-				}
-				if(nums_left==0){
-					status[id] = 2;
-				}
-				if(pthread_mutex_unlock(&sig_mutex)!=0){
-					perror("Unlock failed in prod");
-					exit(1);
-				}
-				if(nums_left == 0){
-					int retval = 0;
-					pthread_exit(&retval);					
-				}
-				printf("Prod thread %d unlocked buffer\n",id);
-				break;
-			case 0:
-				if(sig>0)
-					printf("Prod Thread with id %d got SIGUSR2 and unlocked the buffer\n",id);
-				break;	
-			default:
-				printf("Error in switch case\n");		
-		}
+	// If signal SIGUSR1 is given, then pause the current thread until next signal
+	if(signo == SIGUSR1){
+		pause();
+	}
+	else{
+		// do nothing - resumes from pause call
 	}
 }
-void *consumer(void * param)
-{
-	// int id = *(int *)param;
-	int id = 1;
-	printf("cid = %d\n",id);
-	// free(param);
-	sigset_t signal_set;
-	int sig,flag = 0;
-	struct timespec timeout = {0,1};
-	while(1){
-		sigfillset(&signal_set);
-		// sig = sigtimedwait(&signal_set,NULL,&timeout);
-		sig = sigwaitinfo(&signal_set,NULL);
-		// printf("Cons Thread id = %d,Signal value = %d\n",id,sig);
-		if(sig == SIGUSR1)
-			flag = 1;
-		else if(sig == SIGUSR2)
-			flag = 0;
-		switch(flag){
-			case 1:
-				printf("Reached case 1\n");
-				if(pthread_mutex_lock(&sig_mutex)!=0){
-					perror("Lock failed in cons");
-					exit(1);
-				}
-				printf("Cons Thread with id %d got SIGUSR1 and locked the buffer\n",id);
-				if(buffer_count){
-					int new_num = buffer[out];
-					printf("Cons Thread with id %d consumed %d from buffer\n",id,new_num);
-					out = (out+1)%BUFFSIZE;
-					buffer_count--;
-					printf("buffer_count = %d\n",buffer_count);
 
-				}
-				else{
-					int retval = 0;
-					printf("Exiting\n");
-					pthread_exit(&retval);
-				}
-				if(pthread_mutex_unlock(&sig_mutex)!=0){
-					perror("Unlock failed in cons");
-					exit(1);
-				}
-				printf("Cons thread %d unlocked buffer\n",id);
-				break;
-			case 0:
-				// printf("Reached case 0\n");
-				if(sig>0)
-					printf("Cons Thread with id %d got SIGUSR2 and unlocked the buffer\n",id);
-				break;
-			default:
-				printf("Error in switch case\n");			
+// The runner function for worker threads. This function uses status to find\
+if the thread is a producer or a consumer
+void * runner (void * param)
+{
+
+
+	int id = *(int*)param;				// get the id
+	int nums_left = NUMS_PER_THREAD;	// If the thread is a producer then the \
+	then the number of items it has to consume.
+	
+	// Pause to wait for the first signal
+	pause();
+
+	// If the thread is a producer 
+	if(status[id]==1){
+		// Keep continuing
+		while(1){
+			while(nums_left && buffer_count != BUFFSIZE){
+				pthread_mutex_lock(&sig_mutex);			//start critical section
+				int new_num = rand()%1000+1;			// generate a new number
+				buffer[in] = new_num;					// add the number to the buffer
+				in = (in+1)%BUFFSIZE;					// increment the input buffer
+				buffer_count++;							// Increment the buffer count
+				nums_left--;							// Decrease the number left for the particular\
+															thread to follow
+				pthread_mutex_unlock(&sig_mutex);		// end critical section
+			}
+			if(nums_left==0){							// If while loop breaks
+				pthread_mutex_lock(&sig_mutex);			// lock for CS
+				status[id]=2;							// set the status to producer complete
+				pthread_mutex_unlock(&sig_mutex);		// unlock mutex
+				pthread_exit(0);						// exit the thread
+			}
+		}
+	}
+	// If the thread is a consumer
+	else if(status[id]==0){
+		while(1)// Keep executing till the thread exits
+		{
+			while(buffer_count>0){					// While there is still left to consume
+				pthread_mutex_lock(&sig_mutex);		// Mutex lock
+				int new_num = buffer[out];			// get the number from the buffer
+				out = (out+1)%BUFFSIZE;				// Increment the out index
+				buffer_count--;						// Decrement the buffer count
+				pthread_mutex_unlock(&sig_mutex);	// Unlock the buffer
+			}
+			pthread_mutex_lock(&sig_mutex);			// lock the mutex for end cond check
+			// if everything has been completed
+			if(count(status.begin(),status.end(),1) == 0 && buffer_count <= 0)
+			{
+				status[id] = 3;
+				pthread_mutex_unlock(&sig_mutex);	// unlock the mutex
+				pthread_exit(0);					// exit the thread
+			}
+			pthread_mutex_unlock(&sig_mutex);		// unlock the mutex.
 		}
 	}
 }
 
+//The reporter thread
+void * reporter(void* param)
+{
+	// Store the previous thread
+	int prev_thread = -1;
 
+	while(current_thread == -1);	// wait for at least one thread to start
+
+	while(1)
+	{
+		if(current_thread == -2)	// If execution is over
+		{
+			cout<<"Consumer Thread "<<prev_thread<<" has terminated"<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
+			pthread_exit(0);
+		}
+		if( current_thread == prev_thread){	// If no change in the thread
+			continue;
+		}
+		// If the execution of first thread is starting
+		if(prev_thread == -1){
+			cout<<"Execution of "<<current_thread<<" has started"<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
+		}
+		else
+		// If scheduler thread is still active, then print the context switch message
+		if(current_thread != -2){
+			cout<<"The execution has changed from "<<prev_thread<< " to "<<current_thread<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
+			
+		}
+		// If the context switch happened and old thread has terminated
+		if((status[prev_thread] == 2 || status[prev_thread] == 3) && current_thread != -2){
+			if(status[prev_thread]==2)
+				cout<<"Producer ";
+			else cout<<"Consumer ";
+			cout<<"thread "<<prev_thread<<" has terminated"<<endl;
+			cout<<"Current buffer size = "<<buffer_count<<endl;
+		}
+		// If scheduler is still active, then update old thread's value
+		if(current_thread != -2)
+			prev_thread = current_thread;
+
+	}
+
+}
+
+// The scheduler thread
 void* scheduler(void* param)
 {
+	// List of worker thread's tid values
 	pthread_t* mythreads = (pthread_t*)param;
-	queue<int> scheduler_q;
+	queue<int> scheduler_q;			// The FIFO queue to schedule the threads
 	for(int i=0;i<NUM_THREADS;i++){
-		scheduler_q.push(i);
+		scheduler_q.push(i);		// Push the threads into the queue
 	}
-	printf("Pushed ids into queue\n");
-	int delta = 20;
-	while(!q.empty()){
-		if(pthread_mutex_lock(&sig_mutex)!=0){
-			perror("Lock failed in sched");
-			exit(1);
+
+	while(1){
+		pthread_mutex_lock(&sig_mutex);	//Lock the mutex at the start of the scheduler
+
+		//Count the number of active threads		
+		int n = count(status.begin(),status.end(),1);
+		int m = count(status.begin(),status.end(),0);
+
+		// If the exit condition is true
+		if(n == 0 && buffer_count <= 0 && m==0){
+			current_thread = -2;
+			pthread_mutex_unlock(&sig_mutex);// unlock mutex before exiting
+			pthread_exit(0);
 		}
-		if(count(status.begin(),status.end(),1) == 0 && buffer_count == 0){
-			pthread_mutex_unlock(&sig_mutex);
-			// break;
-			exit(0);
-		}
-		if(pthread_mutex_unlock(&sig_mutex)!=0){
-			perror("Unlock failed in sched");
-			exit(1);
-		}
+		
+		// get the next thread from the queue
 		int curr = scheduler_q.front();
 		scheduler_q.pop();
-		printf("Going to send signal SIGUSR1 to id %d\n",curr);
-		// pthread_t curr_id = mythreads[curr];
-		pthread_kill(mythreads[curr],SIGUSR1);
-		printf("Sent signal SIGUSR1 to id %d, tid %ld\n",curr, mythreads[curr]);
-		usleep(delta);
-		printf("Going to send signal SIGUSR2 to id %d\n",curr);
-		pthread_kill(mythreads[curr],SIGUSR2);
-		printf("Sent signal SIGUSR2 to id %d, tid %ld\n",curr, mythreads[curr]);
+
+		// If it is an active thread
+		if(status[curr]== 0 || status[curr]== 1)
+			pthread_kill(mythreads[curr],SIGUSR2);
+		current_thread = curr;
+		pthread_mutex_unlock(&sig_mutex);// unlock the mutex and let the worker does its thing
+
+		usleep(delta);//Wait for the worker to do stuff
+		
+		// Lock for stopping the thread		
 		pthread_mutex_lock(&sig_mutex);
-		if(status[curr] != 2){
+
+
+		// Send the next signal for the thread to stop - only if it has not yet terminated
+		if(status[curr]== 0 || status[curr]== 1)
+			pthread_kill(mythreads[curr],SIGUSR1);
+		
+		// If the thread is not complete yet push it back
+		if(status[curr] != 2 && status[curr] != 3){
 			scheduler_q.push(curr);
-			printf("Pushing it back\n");
 		}
+
+		// unlock the mutex for the next one
 		pthread_mutex_unlock(&sig_mutex);
 	}
 }
+
+// The main thread
 int main()
 {
-	pthread_mutexattr_init(&ma);
+	pthread_mutexattr_init(&ma);// Initialise the mutex attributes to default values
+	// The mutex has to be recursive
 	pthread_mutexattr_settype(&ma,PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&sig_mutex,&ma);
-	pthread_t mythreads[NUM_THREADS];
-	pthread_t sched_thread;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	srand(time(NULL));
-	int id,i;
-	for(i=0;i<NUM_THREADS;i++){
-		// int* id = (int*)malloc(sizeof(int));
-		// id = i;
-		// *id = i;
-		// if(rand()%2==0){
-		if(i%2==0){
-			printf("Id %d is a producer\n",i);
-			pthread_create(&mythreads[i],NULL,producer,&i);
-			status[i] = 1;
-			struct sigaction sa,sb;
-			sa.sa_handler = (void (*) (int))producer;
-			sb.sa_handler = (void (*) (int))producer;
-			sa.sa_flags = SA_RESTART;
-			sb.sa_flags = SA_RESTART;
-			// sa.sa_flags = 0;
-			sigemptyset(&sa.sa_mask);
-			sigemptyset(&sb.sa_mask);
-			sigaction(SIGUSR1,&sa,0);
-			sigaction(SIGUSR2,&sb,0);
-		}
-		else{
-			printf("Id %d is a consumer\n",i);
-			pthread_create(&mythreads[i],NULL,consumer,&i);
-			status[i] = 0;
-			struct sigaction sa,sb;
-			sa.sa_handler = (void (*) (int))consumer;
-			sb.sa_handler = (void (*) (int))consumer;
-			sa.sa_flags = SA_RESTART;
-			sb.sa_flags = SA_RESTART;
-			// sa.sa_flags = 0;
-			sigemptyset(&sa.sa_mask);
-			sigemptyset(&sb.sa_mask);
-			sigaction(SIGUSR1,&sa,0);
-			sigaction(SIGUSR2,&sb,0);
-		}
-	}
-	pthread_create(&sched_thread,NULL,scheduler,mythreads);
-	void **status_ptr;
-	// for(int i=0;i<NUM_THREADS;i++){
-	// 	pthread_join(mythreads[i],status_ptr);
-	// }
-	pthread_join(sched_thread,status_ptr);
-	printf("Scheduler died\n");
-	pthread_join(mythreads[0],status_ptr);
-	pthread_join(mythreads[1],status_ptr);
+	pthread_mutex_init(&sig_mutex,&ma); 	// Initialse the mutex lock with the attributes
+
+	pthread_t mythreads[NUM_THREADS];// declare the thread variables
+	pthread_t sched_thread, reporter_thread;// declare the reporter and the scheduler
+	pthread_attr_t attr;// Thread attributes
+	pthread_attr_init(&attr);// Initialise pthread attributes to default values
+	srand(time(NULL));// Set the random number seedd
 	
-	printf("Everything done\n");
+	int id,i;// Variable to pass id to the function
+
+	signal(SIGUSR1,signal_handler);// install the signal handlers
+	signal(SIGUSR2,signal_handler);
+
+	for(i=0;i<NUM_THREADS;i++){// Declare the threads
+		int* id = new int;// Set the id
+		*id = i;
+		if(rand()%2==0){// Set if producer or consumer
+			status[i] = 0;
+			cout<<"Consumer thread "<<i<<" is created"<<endl;
+		}
+		else{ 
+			status[i] = 1;
+			cout<<"Producer thread "<<i<<" is created"<<endl;
+		}
+		pthread_create(&mythreads[i],NULL,runner,(void *)id);
+	}
+	// create the scheduler thread
+	pthread_create(&sched_thread,NULL,scheduler,mythreads);
+	// create the reporter thread
+	pthread_create(&reporter_thread,NULL,reporter,NULL);
+
+	// wait for all threads to join
+	for(int i=0;i<NUM_THREADS;i++){
+		pthread_join(mythreads[i],NULL);
+	}
+	// wait for scheduler to join
+	pthread_join(sched_thread,NULL);
+	cout<<"Scheduler thread has terminated"<<endl;
+	// wait for reporter to join	
+	pthread_join(reporter_thread,NULL);
+	cout<<"Reporter thread has terminated"<<endl;
+	cout<<"Everything done"<<endl;
+	// destroy the mutex at the end
+	pthread_mutex_destroy(&sig_mutex);
 	return 0;
 }
