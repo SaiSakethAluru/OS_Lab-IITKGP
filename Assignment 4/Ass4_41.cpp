@@ -111,6 +111,7 @@ void * reporter(void* param)
 
 	while(1)
 	{
+		pthread_mutex_lock(&sig_mutex);
 		if(current_thread == -2)	// If execution is over
 		{
 			cout<<"Consumer Thread "<<prev_thread<<" has terminated"<<endl;
@@ -118,6 +119,7 @@ void * reporter(void* param)
 			pthread_exit(0);
 		}
 		if( current_thread == prev_thread){	// If no change in the thread
+			pthread_mutex_unlock(&sig_mutex);
 			continue;
 		}
 		// If the execution of first thread is starting
@@ -143,6 +145,7 @@ void * reporter(void* param)
 		// If scheduler is still active, then update old thread's value
 		if(current_thread != -2)
 			prev_thread = current_thread;
+		pthread_mutex_unlock(&sig_mutex);
 
 	}
 
