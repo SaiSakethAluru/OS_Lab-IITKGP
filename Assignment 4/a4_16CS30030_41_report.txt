@@ -1,0 +1,43 @@
+﻿OPERATING SYSTEM LABORATORY
+Name: Sai Saketh Aluru
+Roll No. 16CS30030
+Group No. 41
+
+
+Assignment 4: Implement a CPU scheduler on top of Linux using threads and signal handling
+
+
+The assignment is implemented in C++ using the POSIX pthread library for thread handling and the signal.h library for installing the signal handlers and processing the signals.
+
+
+Creating threads:
+1. In this assignment, apart from the main thread, we create N+2 threads, where N is an predefined integer value. Apart from these N worker threads, there is a scheduler thread and a reporter thread.
+2. Each of these N threads can either be a Producer thread or a Consumer thread, which is determined using uniform random numbers (modulo 2). 
+3. Each producer thread generates 1000 psuedo random numbers and writes them to a shared buffer. After the 1000 numbers are generated, the thread exits.
+4. Each of the consumer threads repeatedly consumes these threads. The consumers threads all exit once there are no active producers and the shared buffer is empty.
+5. The scheduler thread uses a status buffer to repeatedly send signals to the threads to either put them to sleep or to wake them up and continue their execution. The threads are exectued in round robin fashion.
+6. The reporter threads monitors the status buffer and keeps printing of any changes that are happening during the scheduling as well as the buffer size at each such event.
+
+
+Signal Handling:
+1. Each of the N worker threads (producers and consumers) have two signal handlers installed, for the two user defined signals SIGUSR1 and SIGUSR2, defined in signal.h. SIGUSR1 puts a running thread into a wait state and SIGUSR2 brings it back from wait state to running state.
+2. This is implemented using the pause() function call. This call puts a thread into wait state until any signal is delivered to the thread. Therefore, in the signal handler, the thread is made to pause upon receiving a SIGUSR1 signal. The thread remains in this state until some signal is given (SIGUSR2 in this case).
+
+
+Shared Memory:
+1. All the threads (including scheduler and reporter) have a set of global variables that are shared among them. These include the buffer (where numbers are produced and consumed), the buffer count at any instant, the in and out parameters (in - first empty location, out - first occupied location), the status array that is used to identify whether a thread is a consumer or a producer as well as whether it is active or dead, and the index of the current thread used by the reporter thread to print the scheduling information.
+2. Since shared memory in multithreading might lead to race conditions, we also make use of mutex locks to lock and unlock these global values during the execution of each of the worker threads as well as the scheduler thread. 
+
+
+
+
+Scheduling:
+1. The scheduler thread makes use of round robin scheduling algorithm with a time quantum of 1ms. 
+2. A FIFO queue is used to maintain a list of all the currently active threads to be scheduled. The front element is popped from the queue and the SIGUSR2 signal is given to it to resume it from its wait state. After giving the signal, the scheduler thread goes to sleep for delta ( time quantum) amount of time. Also, the scheduler sets the value of the current_thread to whichever thread is going to execute before giving a signal to it. This value is used by the reporter thread.
+3. After this, when the scheduler wakes up, it gives the signal SIGUSR1 to the currently running thread to pause its execution. It then locks the status array, and checks the status of the thread that was executing. If the status of the thread indicates that it is an active thread, then it is pushed back into the queue. Else, the scheduler drops this thread index and goes for the next one. 
+4. After each of the threads has gone to a dead state, the scheduler thread also exits. 
+
+
+Reporter:
+1. The reporter thread makes use of the status array and the value of the current_thread to know which thread is currently running. It also maintains a local variable called prev_thread that is the value of the current_thread in the previous iteration. 
+2. Each time the value of current_thread changes, the status array is checked to see if it is still active or whether it is terminated. The appropriate message is then printed along with the buffer size at that point.
