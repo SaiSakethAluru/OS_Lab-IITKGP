@@ -4,14 +4,16 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
-
+#include <signal.h>
 using namespace std;
 
 int main(int argc, char* argv[])
 {
 	int mq1_id = atoi(argv[1].c_str());
 	int mq2_id = atoi(argv[2].c_str());
-	for(;;){
+	int k = atoi(argv[3].c_str());
+	int i=0;
+	while(i<k){
 		int curr_pid;
 		msgrcv(mq1_id,&curr_pid,sizeof(int),1,0);
 		kill(curr_pid,SIGUSR1);
@@ -20,6 +22,7 @@ int main(int argc, char* argv[])
 		// terminated
 		if(status==0){
 			printf("terminated\n");
+			i++;
 			continue;
 		}
 		msgsnd(mq1_id,&curr_pid,sizeof(int),0);

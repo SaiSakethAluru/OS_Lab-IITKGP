@@ -4,20 +4,29 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
-
+#include <signal.h>
 using namespace std;
 
 typedef struct{
 	int frame_no;
 	int valid;
 }page_table_node;
+
 typedef struct{
 	int pid;
 	int num_pages;
 }process_page_map_node;
+
+void sig_handler(int signo)
+{
+	if(signo == SIGUSR1){
+		// do nothing
+	}
+}
 int main()
 {
 	int k=3,m=4,f=20;
+	signal(SIGUSR1,sig_handler);
 	// cin>>k>>m>>f;
 	// Init data structures
 	
@@ -58,7 +67,7 @@ int main()
 	pid_t pid_scheduler = fork();
 	if(pid_scheduler==0){
 		// exec call to scheduler.cpp
-		char** args = new char*[4];
+		char** args = new char*[5];
 		args[0] = "./scheduler";
 		string mq1_id_to_str = to_string(mq1_id);
 		args[1] = new char[mq1_id_to_str.size()+1];
@@ -66,13 +75,16 @@ int main()
 		string mq2_id_to_str = to_string(mq2_id);
 		args[2] = new char[mq2_id_to_str.size()+1];
 		strcpy(args[2],mq2_id_to_str);
-		args[3] = NULL;
+		string k_str = to_string(k);
+		args[3] = new char[k_str.size()+1];
+		strcpy(args[3],k_str);
+		args[4] = NULL;
 		execvp(args[0],args);
 	}
 	pid_t pid_mmu = fork();
 	if(pid_mmu == 0){
 		// exec call to mmu
-		char** args = new char* [6];
+		char** args = new char* [9];
 		args[0] = "./mmu";
 		string mq2_id_to_str = to_string(mq2_id);
 		args[1] = new char[mq2_id_to_str.size()+1];
@@ -86,7 +98,16 @@ int main()
 		string sm2_id_to_str = to_string(sm2_id);
 		args[4] = new char[sm2_id_to_str.size()+1];
 		strcpy(args[4],sm2_id_to_str);
-		args[5] = NULL;
+		string sm3_id_to_str = to_string(sm3_id);
+		args[5] = new char[sm3_id_to_str.size()+1];
+		strcpy(args[5],sm3_id_to_str);
+		string k_str = to_string(k);
+		args[6] = new char[k_str.size()+1];
+		strcpy(args[6],k_str);
+		string m_str = to_string(m);
+		args[7] = new char[m_str.size()+1];
+		strcpy(args[7],m_str);
+		args[8] = NULL;
 		execvp(args[0],args);
 	}
 	pid_t processes[k];
@@ -120,6 +141,9 @@ int main()
 		else{
 			process_page_map[i].pid = processes[i];
 			process_page_map[i].num_pages = mi;
+			int* process_pid = new int;
+			*process_pid = processes[i];
+			msgsnd(mq1_id,process_pid,sizeof(int),0);
 			usleep(250000);
 		}
 
