@@ -7,7 +7,7 @@
 #include <signal.h>
 #include <string>
 using namespace std;
-
+int debug = 1;
 typedef struct{
 	int frame_no;
 	int valid;
@@ -49,11 +49,16 @@ int main()
 	mq1_id = msgget(mq1,IPC_CREAT|0666);
 	mq2_id = msgget(mq2,IPC_CREAT|0666);
 	mq3_id = msgget(mq3,IPC_CREAT|0666);
+	if(debug)
+		cout<<"Master- Successfully creates shared memory and message queues"<<endl;
 
 	page_table_node* page_tables = (page_table_node*)shmat(sm1_id,NULL,0);
 	int* free_frame_list = (int *)shmat(sm2_id,NULL,0);
 	process_page_map_node* process_page_map = (process_page_map_node*)shmat(sm3_id,NULL,0);
-
+	if(debug)
+		cout<<"Master- Allocates the page_tables, free_frame_list"<<\
+			" and the process page map"<<endl;
+	
 	for(int i=0;i<k;i++){
 		for(int j=0;j<m;j++){
 			page_tables[i*m+j].frame_no = -1;
@@ -64,6 +69,8 @@ int main()
 	for(int i=0;i<f;i++){
 		free_frame_list[i] = 1;
 	}
+	if(debug)
+		cout<<"Master- Initialized data structures"<<endl;
 
 	pid_t pid_scheduler = fork();
 	if(pid_scheduler==0){
@@ -80,6 +87,8 @@ int main()
 		args[3] = new char[k_str.size()+1];
 		strcpy(args[3],k_str.c_str());
 		args[4] = NULL;
+		if(debug)
+		cout<<"Master- About to call scheduler"<<endl;
 		execvp(args[0],args);
 	}
 	pid_t pid_mmu = fork();
@@ -115,6 +124,8 @@ int main()
 		args[9] = new char[s_str.size()];
 		strcpy(args[9],s_str.c_str());
 		args[10] = NULL;
+		if(debug)
+		cout<<"Master- About to call mmu"<<endl;
 		execvp(args[0],args);
 	}
 	pid_t processes[k];
@@ -127,8 +138,13 @@ int main()
 			pr_str += to_string(rand()%mi);
 			pr_str += "|";
 		}
+		if(debug)
+		cout<<"The ref string for process "<<i<<" is "<<pr_str<<endl;
+		
 		processes[i] = fork();
 		if(processes[i] == 0){
+			if(debug)
+			cout<<"The pid of process "<<i<<" is "<<processes[i]<<endl;
 			// exec, parameters - pr string, mq1, mq3
 			char** args = new char* [5];
 			// possible place for segfault;
@@ -142,8 +158,11 @@ int main()
 			args[3] = new char[mq3_id_to_str.size()+1];
 			strcpy(args[3],mq3_id_to_str.c_str());
 			args[4] = NULL;
+			// printf("About to call ")
+			if(debug)
+			cout<<"Master- Starting process "<<i<<endl;
 			execvp(args[0],args);
-			printf("Error\n");
+			printf("Master- Error in proc %d\n",i);
 		}
 		else{
 			process_page_map[i].pid = processes[i];
@@ -155,12 +174,16 @@ int main()
 		}
 
 	}
+	if(debug)
+	cout<<"Master- Just before pausing"<<endl;
 	pause();
+	if(debug)
+	cout<<"Master- Pause done, time to kill"<<endl;
 	kill(pid_scheduler,SIGKILL);
 	kill(pid_mmu,SIGKILL);
 	for(int i=0;i<k;i++){
 		kill(processes[i],SIGKILL);
 	}
-	printf("All done!\n");
+	printf("Master- All done!\n");
 	return 0;
 }
