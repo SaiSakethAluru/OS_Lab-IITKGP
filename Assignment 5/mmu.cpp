@@ -181,6 +181,7 @@ void HandlePageFault(page_table_node* page_tables,vector<int> &free_frame_list,v
 
 void insert_into_tlb(int pid, int page_no, int frame_no, int s)
 {
+	if(debug)
 	cout<<"Inserting into tlb"<<endl;
 	if(tlb_table.size()<s){
 		pair< pair<int,int>, pair<int,int> > to_insert(pair<int,int>(pid,page_no),pair<int,int>(frame_no,global_count));
@@ -197,6 +198,7 @@ void insert_into_tlb(int pid, int page_no, int frame_no, int s)
 				lru_time = global_count - it->second.second;
 			}
 		}
+		if(debug)
 		cout<<"To be deleted position "<<lru_it - tlb_table.begin()<<endl;
 		tlb_table.erase(lru_it);
 		pair< pair<int,int>, pair<int,int> > to_insert(pair<int,int>(pid,page_no),pair<int,int>(frame_no,global_count));
