@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 		msgrcv(mq2_id,&status,sizeof(int),1,0);
 		// terminated
 		if(debug)
-		printf("Received status %d\n");
+		printf("Received status %d\n",status);
 		if(status==0){
 			if(debug)
 			printf("terminated\n");
