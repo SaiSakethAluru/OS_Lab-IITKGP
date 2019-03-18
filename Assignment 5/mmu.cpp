@@ -154,9 +154,11 @@ void insert_into_tlb(int pid, int page_no, int frame_no, int s)
 		tlb_table.insert(to_insert);
 	}
 	else{
-		typeof(tlb_table.begin()) lru_it = tlb_table.begin();
+		// typeof(tlb_table.begin()) lru_it = tlb_table.begin();
+		auto lru_it = tlb_table.begin();
 		int lru_time = -1;
-		for(typeof(tlb_table.begin()) it = tlb_table.begin();it != tlb_table.end();it++){
+		// for(typeof(tlb_table.begin()) it = tlb_table.begin();it != tlb_table.end();it++){
+		for(auto it = tlb_table.begin();it != tlb_table.end();it++){
 			if(global_count - it->second.second > lru_time) {
 				lru_it = it;
 				lru_time = global_count - it->second.second;
