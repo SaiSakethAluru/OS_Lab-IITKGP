@@ -9,9 +9,9 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	int mq1_id = atoi(argv[1].c_str());
-	int mq2_id = atoi(argv[2].c_str());
-	int k = atoi(argv[3].c_str());
+	int mq1_id = atoi(argv[1]);
+	int mq2_id = atoi(argv[2]);
+	int k = atoi(argv[3]);
 	int i=0;
 	while(i<k){
 		int curr_pid;
