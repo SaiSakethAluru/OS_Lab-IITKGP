@@ -35,12 +35,13 @@ int main(int argc, char*argv[])
 
     vector<int> prs;
 	signal(SIGUSR1, sig_handler);
+	char* temp_str;
     while(pr_str.length()>0){
 		int pos = pr_str.find("|");
         
         if(pos!=string::npos)
         {
-            prs.push_back(atoi(pr_str.substr(0,pos)));
+            prs.push_back(atoi((pr_str.substr(0,pos)).c_str()));
             pr_str.erase(0, pr_str.find("|")+1);
             // cout<<"prs_str["<<prs.str_size()-1<<"] = "<<\
                     prs[prs.str_size()-1]<<endl;
@@ -48,7 +49,7 @@ int main(int argc, char*argv[])
         else
             break;
     }
-	prs.push_back(atoi(pr_str));
+	prs.push_back(atoi(pr_str.c_str()));
 
 	int n = prs.size();
 	page_req_node p_req;
@@ -62,7 +63,7 @@ int main(int argc, char*argv[])
 		p_req.page_no = prs[i];
 		msgsnd(mq3_id, &p_req, sizeof(page_req_node),0);
 		
-		msgrecv(mq3_id, &p_res, sizeof(page_response_node), 2, 0);
+		msgrcv(mq3_id, &p_res, sizeof(page_response_node), 2, 0);
 		int frame_recv = p_res.frame_no;
 
 		if(frame_recv>=0)
