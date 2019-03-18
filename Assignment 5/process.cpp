@@ -30,8 +30,13 @@ void sig_handler(int signo)
 int main(int argc, char*argv[])
 {
     string pr_str = string(argv[1]);
-    int mq1_id = atoi(argv[2]);
-	int mq3_id = atoi(argv[3]);
+    int mq1 = atoi(argv[2]);
+    // int mq1_id = atoi(argv[2]);
+	int mq3 = atoi(argv[3]);
+	// int mq3_id = atoi(argv[3]);
+	int mq1_id = msgget(mq1,IPC_CREAT|0666);
+	int mq3_id = msgget(mq3,IPC_CREAT|0666);
+
 	pid_t process_pid = getpid();
 	if(debug)
 	cout<<"Process:- The ref string is "<<pr_str<<endl;
@@ -48,8 +53,8 @@ int main(int argc, char*argv[])
             prs.push_back(atoi((pr_str.substr(0,pos)).c_str()));
             pr_str.erase(0, pr_str.find("|")+1);
 			if(debug)
-            cout<<"prs_str["<<prs.str_size()-1<<"] = "<<\
-                    prs[prs.str_size()-1]<<endl;
+            cout<<"Process "<<process_pid<<" prs["<<prs.size()-1<<"] = "<<\
+                    prs[prs.size()-1]<<endl;
         }
         else
             break;
@@ -75,9 +80,9 @@ int main(int argc, char*argv[])
 		if(debug)
 		cout<<"Process "<<process_pid<<": is sending the page no "\
 				<<prs[i]<<endl;
-		msgsnd(mq3_id, &p_req, sizeof(page_req_node),0);
-		
-		msgrcv(mq3_id, &p_res, sizeof(page_response_node), 2, 0);
+		msgsnd(mq3_id, &p_req, sizeof(p_req.pid)+sizeof(p_req.page_no),0);
+		p_res.mtype = 2;
+		msgrcv(mq3_id, &p_res, sizeof(p_res.frame_no), 2, 0);
 		
 		int frame_recv = p_res.frame_no;
 		
@@ -99,5 +104,12 @@ int main(int argc, char*argv[])
 			exit(0);
 		}
 	}
+	p_req.mtype = 1;
+	p_req.pid = process_pid;
+	p_req.page_no = -9;
+	if(debug)
+	cout<<"Process "<<process_pid<<": is sending the page no "\
+			<<p_req.page_no<<endl;
+	msgsnd(mq3_id, &p_req, sizeof(p_req.pid)+sizeof(p_req.page_no),0);
 
 }

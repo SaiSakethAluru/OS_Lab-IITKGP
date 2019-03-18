@@ -1,3 +1,5 @@
+all: master scheduler proc mmu
+	
 master: master.cpp
 	g++ -g -std=c++11 master.cpp -o master
 
@@ -10,7 +12,6 @@ proc: process.cpp
 mmu: mmu.cpp
 	g++ -g -std=c++11 mmu.cpp -o mmu
 
-all: master scheduler proc mmu
 
 clean: 
 	rm -f master scheduler proc mmu 
