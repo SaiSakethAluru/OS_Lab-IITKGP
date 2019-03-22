@@ -3,6 +3,8 @@
 #include <sys/msg.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
 #include <string>
@@ -29,13 +31,14 @@ void sig_handler(int signo)
 		// do nothing
 	}
 }
+
 int main()
 {
-	int k=3,m=4,f=20,s=10;
+	int k=8,m=4,f=20,s=10;
 	signal(SIGUSR1,sig_handler);
 	// cin>>k>>m>>f;
 	// Init data structures
-	
+	cout<<"MASTER: pid of master is "<<getpid()<<endl;
 	// vector<int> free_frame_list(f,1);  	// Each index is a frame, 0 - occupied, 1 - free
 	// a k x m matrix, each entry is a tuple (frame number, valid bit)
 	// vector<vector<pair<int,bool> > > page_tables = init_page_tables(k,m);
@@ -94,80 +97,99 @@ int main()
 	pid_t pid_scheduler = fork();
 	if(pid_scheduler==0){
 		// exec call to scheduler.cpp
-		char** args = new char*[5];
-		args[0] = new char[40];
-		strcpy(args[0],"./scheduler");
+		char** args = new char*[8];
+		args[0] = new char[10];
+		strcpy(args[0],"xterm");
+		
+		args[1] = new char[5];
+		strcpy(args[1],"-hold");
+		
+		args[2] = new char[5];
+		strcpy(args[2],"-e");
+
+		args[3+0] = new char[40];
+		strcpy(args[3+0],"./scheduler");
 		string mq1_to_str = to_string(mq1);
 		// string mq1_id_to_str = to_string(mq1_id);
-		args[1] = new char[mq1_to_str.size()+1];
-		// args[1] = new char[mq1_id_to_str.size()+1];
-		strcpy(args[1],mq1_to_str.c_str());
-		// strcpy(args[1],mq1_id_to_str.c_str());
+		args[3+1] = new char[mq1_to_str.size()+1];
+		// args[3+1] = new char[mq1_id_to_str.size()+1];
+		strcpy(args[3+1],mq1_to_str.c_str());
+		// strcpy(args[3+1],mq1_id_to_str.c_str());
 		string mq2_to_str = to_string(mq2);
 		// string mq2_id_to_str = to_string(mq2_id);
-		args[2] = new char[mq2_to_str.size()+1];
-		// args[2] = new char[mq2_id_to_str.size()+1];
-		strcpy(args[2],mq2_to_str.c_str());
-		// strcpy(args[2],mq2_id_to_str.c_str());
+		args[3+2] = new char[mq2_to_str.size()+1];
+		// args[3+2] = new char[mq2_id_to_str.size()+1];
+		strcpy(args[3+2],mq2_to_str.c_str());
+		// strcpy(args[3+2],mq2_id_to_str.c_str());
 		string k_str = to_string(k);
-		args[3] = new char[k_str.size()+1];
-		strcpy(args[3],k_str.c_str());
-		args[4] = NULL;
+		args[3+3] = new char[k_str.size()+1];
+		strcpy(args[3+3],k_str.c_str());
+		args[3+4] = NULL;
 		if(debug)
 		cout<<"MASTER: Master- About to call scheduler"<<endl;
 		if(debug)
-		cout<<"MASTER: "<<args[0]<<" "<<args[1]<<" "<<args[2]<<" "<<args[3]<<endl;	
+		cout<<"MASTER: "<<args[3+0]<<" "<<args[3+1]<<" "<<args[3+2]<<" "<<args[3+3]<<endl;	
 		execvp(args[0],args);
 	}
 	pid_t pid_mmu = fork();
 	if(pid_mmu == 0){
 		// exec call to mmu
-		char** args = new char* [11];
-		args[0] = new char[30];
-		strcpy(args[0],"./mmu");
+		char** args = new char* [14];
+		
+		args[0] = new char[10];
+		strcpy(args[0],"xterm");
+		
+		args[1] = new char[5];
+		strcpy(args[1],"-hold");
+		
+		args[2] = new char[5];
+		strcpy(args[2],"-e");
+
+		args[3+0] = new char[30];
+		strcpy(args[3+0],"./mmu");
 		string mq2_to_str = to_string(mq2);
 		// string mq2_id_to_str = to_string(mq2_id);
-		args[1] = new char[mq2_to_str.size()+1];
-		// args[1] = new char[mq2_id_to_str.size()+1];
-		strcpy(args[1],mq2_to_str.c_str());
-		// strcpy(args[1],mq2_id_to_str.c_str());
+		args[3+1] = new char[mq2_to_str.size()+1];
+		// args[3+1] = new char[mq2_id_to_str.size()+1];
+		strcpy(args[3+1],mq2_to_str.c_str());
+		// strcpy(args[3+1],mq2_id_to_str.c_str());
 		string mq3_to_str = to_string(mq3);
 		// string mq3_id_to_str = to_string(mq3_id);
-		args[2] = new char[mq3_to_str.size()+1];
-		// args[2] = new char[mq3_id_to_str.size()+1];
-		strcpy(args[2],mq3_to_str.c_str());
-		// strcpy(args[2],mq3_id_to_str.c_str());
+		args[3+2] = new char[mq3_to_str.size()+1];
+		// args[3+2] = new char[mq3_id_to_str.size()+1];
+		strcpy(args[3+2],mq3_to_str.c_str());
+		// strcpy(args[3+2],mq3_id_to_str.c_str());
 		string sm1_to_str = to_string(sm1);
 		// string sm1_id_to_str = to_string(sm1_id);
-		args[3] = new char[sm1_to_str.size()+1];
-		// args[3] = new char[sm1_id_to_str.size()+1];
-		strcpy(args[3],sm1_to_str.c_str());
-		// strcpy(args[3],sm1_id_to_str.c_str());
+		args[3+3] = new char[sm1_to_str.size()+1];
+		// args[3+3] = new char[sm1_id_to_str.size()+1];
+		strcpy(args[3+3],sm1_to_str.c_str());
+		// strcpy(args[3+3],sm1_id_to_str.c_str());
 		string sm2_to_str = to_string(sm2);
 		// string sm2_id_to_str = to_string(sm2_id);
-		args[4] = new char[sm2_to_str.size()+1];
-		// args[4] = new char[sm2_id_to_str.size()+1];
-		strcpy(args[4],sm2_to_str.c_str());
-		// strcpy(args[4],sm2_id_to_str.c_str());
+		args[3+4] = new char[sm2_to_str.size()+1];
+		// args[3+4] = new char[sm2_id_to_str.size()+1];
+		strcpy(args[3+4],sm2_to_str.c_str());
+		// strcpy(args[3+4],sm2_id_to_str.c_str());
 		string sm3_to_str = to_string(sm3);
 		// string sm3_id_to_str = to_string(sm3_id);
-		args[5] = new char[sm3_to_str.size()+1];
-		// args[5] = new char[sm3_id_to_str.size()+1];
-		strcpy(args[5],sm3_to_str.c_str());
-		// strcpy(args[5],sm3_id_to_str.c_str());
+		args[3+5] = new char[sm3_to_str.size()+1];
+		// args[3+5] = new char[sm3_id_to_str.size()+1];
+		strcpy(args[3+5],sm3_to_str.c_str());
+		// strcpy(args[3+5],sm3_id_to_str.c_str());
 		string k_str = to_string(k);
-		args[6] = new char[k_str.size()+1];
-		strcpy(args[6],k_str.c_str());
+		args[3+6] = new char[k_str.size()+1];
+		strcpy(args[3+6],k_str.c_str());
 		string m_str = to_string(m);
-		args[7] = new char[m_str.size()+1];
-		strcpy(args[7],m_str.c_str());
+		args[3+7] = new char[m_str.size()+1];
+		strcpy(args[3+7],m_str.c_str());
 		string f_str = to_string(f);
-		args[8] = new char[f_str.size()];
-		strcpy(args[8],f_str.c_str());
+		args[3+8] = new char[f_str.size()];
+		strcpy(args[3+8],f_str.c_str());
 		string s_str = to_string(s);
-		args[9] = new char[s_str.size()];
-		strcpy(args[9],s_str.c_str());
-		args[10] = NULL;
+		args[3+9] = new char[s_str.size()];
+		strcpy(args[3+9],s_str.c_str());
+		args[3+10] = NULL;
 		if(debug)
 		cout<<"MASTER: Master- About to call mmu"<<endl;
 		execvp(args[0],args);
@@ -186,9 +208,9 @@ int main()
 		cout<<"MASTER: The ref string for process "<<i<<" is "<<pr_str<<endl;
 		
 		processes[i] = fork();
+		if(debug)
+		cout<<"MASTER: The pid of process "<<i<<" is "<<processes[i]<<endl;
 		if(processes[i] == 0){
-			if(debug)
-			cout<<"MASTER: The pid of process "<<i<<" is "<<processes[i]<<endl;
 			// exec, parameters - pr string, mq1, mq3
 			char** args = new char* [5];
 			// possible place for segfault;
@@ -201,15 +223,15 @@ int main()
 			string mq1_to_str = to_string(mq1);
 			// string mq1_id_to_str = to_string(mq1_id);
 			args[2] = new char[mq1_to_str.size()+1];
-			// args[2] = new char[mq1_id_to_str.size()+1];
+			// args[3+2] = new char[mq1_id_to_str.size()+1];
 			strcpy(args[2],mq1_to_str.c_str());
-			// strcpy(args[2],mq1_id_to_str.c_str());
+			// strcpy(args[3+2],mq1_id_to_str.c_str());
 			string mq3_to_str = to_string(mq3);
 			// string mq3_id_to_str = to_string(mq3_);
 			args[3] = new char[mq3_to_str.size()+1];
-			// args[3] = new char[mq3_id_to_str.size()+1];
+			// args[3+3] = new char[mq3_id_to_str.size()+1];
 			strcpy(args[3],mq3_to_str.c_str());
-			// strcpy(args[3],mq3_id_to_str.c_str());
+			// strcpy(args[3+3],mq3_id_to_str.c_str());
 			args[4] = NULL;
 			if(debug)
 			cout<<"MASTER: "<<args[0]<<" "<<args[1]<<" "<<args[2]<<" "<<args[3]<<endl;
@@ -222,11 +244,11 @@ int main()
 			process_page_map[i].num_pages = mi;
 			// int* process_pid = new int;
 			// *process_pid = processes[i];
-			process_node pr_node;
-			pr_node.mtype = 1;
-			pr_node.pid = processes[i];
-			cout<<"MASTER: Sending process "<<pr_node.pid<<endl;
-			msgsnd(mq1_id,&pr_node,sizeof(pr_node.pid),0);
+			process_node* pr_node = new process_node;
+			pr_node->mtype = 1;
+			pr_node->pid = processes[i];
+			cout<<"MASTER: Sending process "<<pr_node->pid<<endl;
+			msgsnd(mq1_id,pr_node,sizeof(pr_node->pid),0);
 			// delete process_pid;
 			usleep(2500000);
 		}
@@ -235,13 +257,17 @@ int main()
 	if(debug)
 	cout<<"MASTER: Master- Just before pausing"<<endl;
 	pause();
+	// wait(NULL);
+	// sleep(0);
+	// while(param);
 	if(debug)
 	cout<<"MASTER: Master- Pause done, time to kill"<<endl;
-	kill(pid_scheduler,SIGKILL);
-	kill(pid_mmu,SIGKILL);
+	kill(pid_mmu,SIGUSR1);
+	kill(pid_scheduler,SIGUSR2);
 	for(int i=0;i<k;i++){
 		kill(processes[i],SIGKILL);
 	}
 	printf("Master- All done!\n");
+
 	return 0;
 }

@@ -8,6 +8,7 @@
 using namespace std;
 
 int global_count = 0;
+int debug=0;
 
 typedef struct{
 	long mtype;
@@ -43,9 +44,16 @@ vector<int> pid_index_map;
 void HandlePageFault(page_table_node* page_tables,vector<int> &free_frame_list,vector<vector<int> > &counters,int index,int pid,int page_no,int s);
 void remove_from_tlb(int pid,int page_no);
 void insert_into_tlb(int pid, int page_no, int frame_no, int s);
-int debug=1;
+
+void sig_handler(int signo)
+{
+	if(signo == SIGUSR1)
+		exit(0);
+}
+
 int main(int argc, char* argv[])
 {
+	signal(SIGUSR1,sig_handler);
 	int mq2 = atoi(argv[1]);
 	// int mq2_id = atoi(argv[1]);
 	int mq3 = atoi(argv[2]);
@@ -109,7 +117,7 @@ int main(int argc, char* argv[])
 			status_node st_node;
 			st_node.mtype = 1;
 			st_node.status = 0;
-			cout<<"MMU: Process sent 9, terminated,status = "<<st_node.status<<endl;
+			cout<<"MMU: Process sent 9, terminated,status = "<<st_node.status<<endl<<endl;
 			msgsnd(mq2_id,&st_node,sizeof(st_node.status),0);
 			continue;
 		}
@@ -131,6 +139,8 @@ int main(int argc, char* argv[])
 			if(debug)
 			cout<<"MMU: Found in tlb"<<endl;
 			global_count++;
+			cout<<"MMU: Global count "<<global_count<<" process id "<<
+				page_req.pid<<" and page no "<<page_req.page_no<<endl;
 			if(debug)
 			cout<<"MMU: Current value of global_count = "<<global_count<<endl;
 			page_response.frame_no = tlb_table[pair<int,int>(page_req.pid,page_req.page_no)].first;
@@ -139,30 +149,45 @@ int main(int argc, char* argv[])
 		}
 
 		else if(page_tables[index*m+page_req.page_no].frame_no == -1){
-			if(debug)
-			cout<<"MMU: Page fault occured"<<endl;
+			// if(debug)
+			cout<<"MMU: Page fault occured at process "<<page_req.pid<<
+					" requesting page no "<<page_req.page_no<<endl;
 			page_response.frame_no = -1;
 			// msgsnd(mq3_id,&page_response,sizeof(page_response_node),0);
 			global_count++;
+			cout<<"MMU: Global count "<<global_count<<" process id "<<
+				page_req.pid<<" and page no "<<page_req.page_no<<endl;
 			HandlePageFault(page_tables,free_frame_list,counters,index,page_req.pid,page_req.page_no,s);
 			// int status = 1;
 			status_node st_node;
 			st_node.mtype = 1;
 			st_node.status = 1;
 			msgsnd(mq2_id,&st_node,sizeof(st_node.status),0);
+			if(debug)
 			cout<<"MMU: sending status "<<st_node.status<<endl;
 		}
 		else{
 			if(debug)
 			cout<<"MMU: Page found in page table"<<endl;
 			page_response.frame_no = page_tables[index*m+page_req.page_no].frame_no;
+			if(debug)
+			cout<<"MMU: Frame number assigned in message"<<endl;
 			global_count++;
+			cout<<"MMU: Global count "<<global_count<<" process id "<<
+				page_req.pid<<" and page no "<<page_req.page_no<<endl;
 			if(debug)
 			cout<<"MMU: Current value of global_count = "<<global_count<<endl;
-			counters[k][m] = global_count;
+			
+			// counters[index][page_req.page_no] = global_count;
+			// cout<<"MMU: After the assignment counter["<<index<<\
+				"]["<<page_req.page_no<<"] is "<<global_count<<endl;
 			// msgsnd(mq3_id,&page_response,sizeof(page_response_node),0);
 			// insert into tlb
+			if(debug)
+				cout<<"MMU: Enter into tlb"<<endl;
 			insert_into_tlb(page_req.pid,page_req.page_no,page_response.frame_no,s);
+			if(debug)
+				cout<<"MMU: Enter into tlb returned successfully"<<endl;
 		}
 		msgsnd(mq3_id,&page_response,sizeof(page_response.frame_no),0);
 		if(debug)
