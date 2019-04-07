@@ -379,6 +379,7 @@ void HandlePageFault(page_table_node* page_tables,vector<int> &free_frame_list,v
 		//Assign the frame number to the latest page table access
 
 		page_tables[index*m+page_no].frame_no = frame_no;
+		page_tables[index*m+page_no].valid = 1;
 		//Set the victim entry to be an invalid entry
 		page_tables[lru_row*m+lru_col].frame_no = -1;
 		
@@ -399,6 +400,7 @@ void HandlePageFault(page_table_node* page_tables,vector<int> &free_frame_list,v
 		int frame_no = find(free_frame_list.begin(),free_frame_list.end(),1) - free_frame_list.begin();
 		free_frame_list[frame_no] = 0;// Mark that frame as occupied
 		page_tables[index*m+page_no].frame_no = frame_no;// Update the page table entry
+		page_tables[index*m+page_no].valid = 1;
 		insert_into_tlb(pid,page_no,frame_no,s);// Insert the request into the tlb
 	}
 }

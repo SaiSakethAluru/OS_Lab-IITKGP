@@ -57,7 +57,14 @@ void sig_handler(int signo)
 int main()
 {
 	int k=3,m=10,f=10,s=6;
-
+	cout<<"Enter k: ";
+	cin>>k;
+	cout<<"Enter m: ";
+	cin>>m;
+	cout<<"Enter f: ";
+	cin>>f;
+	cout<<"Enter s: ";
+	cin>>s;
 	//Install the signal handler
 	signal(SIGUSR1,sig_handler);
 	// Init data structures
@@ -68,7 +75,6 @@ int main()
 		f = The maximum number of occupied frames in memory
 		s = Size of the TLB
 	*/
-
 	cout<<"MASTER: pid of master is "<<getpid()<<endl;
 	
 	srand(time(NULL));
@@ -298,7 +304,9 @@ int main()
 				j++;
 			}
 		}
-
+		// If an invalid page number is sent
+		// pr_str += to_string(mi+1);
+		// pr_str += "|";
 		if(debug)
 			cout<<"MASTER: The ref string for process "<<i<<" is "<<pr_str<<endl;
 		
@@ -376,6 +384,7 @@ int main()
 		cout<<"MASTER: Master- Pause done, time to kill"<<endl;
 	
 	//Signal Scheduler and MMU to stop
+	sleep(10);
 	if(kill(pid_mmu,SIGUSR1)<0)
 		perror("MASTER: mmu kill error");
 	if(kill(pid_scheduler,SIGUSR2)<0)
