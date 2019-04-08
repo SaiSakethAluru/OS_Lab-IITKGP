@@ -4,7 +4,7 @@
 #include <string>
 using namespace std;
 
-int init();
+int init(int bsize,int msize);
 int my_open(string filename,int type);
 void my_close(int fd);
 int my_read(int fd, char* buffer, int length);

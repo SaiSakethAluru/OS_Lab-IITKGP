@@ -5,7 +5,12 @@ using namespace std;
 
 int main()
 {
-	init();
+	int bsize, msize;
+	cout<<"Enter block size in kb: ";
+	cin>>bsize;
+	cout<<"Enter memory size in Mb: ";
+	cin>>msize;
+	init(bsize,msize);
 	string filename("file.txt");
 	int fd = my_open(filename,1);
 	string test1 = "Hello saketh";

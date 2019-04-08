@@ -1,3 +1,4 @@
+// Standard includes
 #include <iostream>
 #include <bits/stdc++.h>
 #include <sys/types.h>
@@ -5,24 +6,26 @@
 #include <fcntl.h>
 #include <unistd.h>
 using namespace std;
+// Include for api header
 #include "myfat.hpp"
-
+// Macros for better readability of code
 #define vec_dir vector<directory_node>*
 #define vec_fat vector<int>*
 #define free_block_vec (*(super_block *)main_memory[0]).free_blocks
 #define MB_TO_KB 1024
-
+// Local function prototypes
 int read_multiple_blocks(int fd, char* buffer, int length);
 int write_multiple_blocks(int fd, char* buffer, int length);
 int allocate_new_block(int curr_block);
 void copy_from_linux(string filename,int fd);
 void copy_to_linux(string filename,int fd);
 
-
+// Global variable
 int block_size = 1, mem_size = 64;
 int num_blocks = mem_size*MB_TO_KB/block_size;
 void** main_memory;
 
+// Class description for super block in main memory
 class super_block{
 public:
 	int num_blocks;
@@ -47,8 +50,10 @@ struct directory_node{
 	bool open;
 	int type_of_open;
 };
-int init()
+int init(int bsize, int msize)
 {
+	block_size = bsize;
+	mem_size = msize;
 	main_memory = new void* [num_blocks];
 	for(int i=3; i<num_blocks;i++){
 		main_memory[i] = new char[MB_TO_KB*block_size];
