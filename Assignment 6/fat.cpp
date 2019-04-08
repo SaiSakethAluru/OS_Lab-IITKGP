@@ -20,7 +20,7 @@ int allocate_new_block(int curr_block);
 void copy_from_linux(string filename,int fd);
 void copy_to_linux(string filename,int fd);
 
-// Global variable
+// Global variables
 int block_size = 1, mem_size = 64;
 int num_blocks = mem_size*MB_TO_KB/block_size;
 void** main_memory;
@@ -29,9 +29,9 @@ void** main_memory;
 class super_block{
 public:
 	int num_blocks;
-	int directory_index;
-	vector<bool> free_blocks;
-	super_block(int num, int index)
+	int directory_index;		// index of directory
+	vector<bool> free_blocks;	// bit map for free block list
+	super_block(int num, int index)		// constructor to initialise data
 	{
 		num_blocks = num;
 		directory_index = index;
@@ -41,7 +41,7 @@ public:
 		free_blocks[2] = true;
 	}
 };
-
+// structure of directory
 struct directory_node{
 	string filename;
 	int first_block;
@@ -50,6 +50,8 @@ struct directory_node{
 	bool open;
 	int type_of_open;
 };
+
+// Allocate and initialise various data structures
 int init(int bsize, int msize)
 {
 	block_size = bsize;
@@ -63,10 +65,10 @@ int init(int bsize, int msize)
 	main_memory[1] = new vector<int>(num_blocks,-1);
 	main_memory[2] = new vector<directory_node>;
 }
-
+// Function to open a file given the filename
+// type -> 1 write only, type -> 0 read only
 int my_open(string filename,int type)
 {
-	// int dir_index = main_memory[2].size();
 	// Read only
 	int fd = -1;
 	if(type == 0){
@@ -90,12 +92,12 @@ int my_open(string filename,int type)
 				break;
 			}
 		}
+		// If file not found in write mode, create a new file
 		if(fd == -1){
 			struct directory_node new_file_node;
 			new_file_node.filename = filename;
 			typeof(free_block_vec.begin()) it = find(free_block_vec.begin(),free_block_vec.end(),0);
 			new_file_node.first_block = it - free_block_vec.begin();
-			// (*(vec_fat)main_memory[1])[new_file_node.first_block] = 1;
 			free_block_vec[new_file_node.first_block] = 1;
 			new_file_node.open = true;
 			new_file_node.type_of_open = 1;
@@ -107,70 +109,69 @@ int my_open(string filename,int type)
 	}
 	return fd;
 }
-
+// Function to close the file
 void my_close(int fd)
 {
 	(*(vec_dir)main_memory[2])[fd].open = false;
 	(*(vec_dir)main_memory[2])[fd].index = 0;
 
 }
-
+// Function to read from the file blocks
 int my_read(int fd, char* buffer, int length)
 {
+	// If file is not open or is in write only mode, 
 	if((*(vec_dir)main_memory[2])[fd].open==false || (*(vec_dir)main_memory[2])[fd].type_of_open == 1){
 		return -1;
 	}
 	else{
-		// if(length > block_size*MB_TO_KB){
-			return read_multiple_blocks(fd,buffer,length);			
-		// }
-
+		return read_multiple_blocks(fd,buffer,length);			
 	}
 }
-
+// Helper function to read from blocks in continuous way of size min(length filesize)
 int read_multiple_blocks(int fd, char* buffer, int length)
 {
-	// cout<<"Index at start "<< (*(vec_dir)main_memory[2])[fd].index<<endl;
 	int chars_read = 0;
+	// Jump to correct block based on index read till now
 	int curr_block_jumps = (*(vec_dir)main_memory[2])[fd].index / (block_size*MB_TO_KB);
 	int curr_block = (*(vec_dir)main_memory[2])[fd].first_block;
-	// cout<<"initial curr_block = "<<curr_block;
 	for(int i=0;i<curr_block_jumps;i++){
 		curr_block = (*(vec_fat)main_memory[1])[curr_block];
 	}	
-	// cout<<"Curr after jumps "<<curr_block<<endl;
+	// Calculate index from where we start reading
 	int read_index = (*(vec_dir)main_memory[2])[fd].index % (block_size*MB_TO_KB);
-	// cout<<"read_index = "<<read_index<<endl;
 	int buf_index = 0;
+	// While it is not the last block of the file,
 	while((*(vec_fat)main_memory[1])[curr_block] >= 0){
-		// cout<<"in while\n";
+		// Determine the size to read
 		int size_to_read = min(block_size*MB_TO_KB - read_index,length);
 		memcpy(buffer+buf_index,(char *)(main_memory[curr_block])+read_index,size_to_read);
+		// Update file index and characters read count
 		chars_read += size_to_read;
 		buf_index += size_to_read;
 		(*(vec_dir)main_memory[2])[fd].index += size_to_read;
+		// Switch to next block
 		curr_block = (*(vec_fat)main_memory[1])[curr_block];
-		// cout<<"Current block in while "<<curr_block<<endl;
 		read_index = 0;
+		// Update length left in buffer
 		length -= size_to_read;
 		if(length <= 0){
 			break;
 		}
 	}
 	read_index = (*(vec_dir)main_memory[2])[fd].index % (block_size*MB_TO_KB);
-	// cout<<"read_index = "<<read_index<<endl;
-	// cout<<"chars_read = "<<chars_read<<endl;
+	// If there is still space in buffer,
 	if(length > 0){
-		// cout<<"Current block = "<<curr_block<<endl;
+		// Determine data left to read in last block
 		int size_to_read = min(block_size*MB_TO_KB - read_index,length);
 		size_to_read = min(size_to_read,(*(vec_dir)main_memory[2])[fd].size-(*(vec_dir)main_memory[2])[fd].index);
 		memcpy(buffer+buf_index,(char *)main_memory[curr_block]+read_index,size_to_read);
+		// Update characters read and file index
 		chars_read += size_to_read;
 		(*(vec_dir)main_memory[2])[fd].index += size_to_read;
 		read_index = 0;
 		length -= size_to_read;
 	}
-	// cout<<"chars read "<<chars_read<<endl;
+	// Return characters read
 	return chars_read;
 }
 

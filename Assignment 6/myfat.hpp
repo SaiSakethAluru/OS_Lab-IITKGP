@@ -1,9 +1,10 @@
+// Header guards
 #ifndef FAT_H
 #define FAT_H
 #include <bits/stdc++.h>
 #include <string>
 using namespace std;
-
+// API call prototypes
 int init(int bsize,int msize);
 int my_open(string filename,int type);
 void my_close(int fd);

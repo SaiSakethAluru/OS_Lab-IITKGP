@@ -5,6 +5,7 @@ using namespace std;
 
 int main()
 {
+	// Read input from user
 	int bsize, msize;
 	cout<<"Enter block size in kb: ";
 	cin>>bsize;
