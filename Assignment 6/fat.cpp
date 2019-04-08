@@ -175,6 +175,9 @@ int read_multiple_blocks(int fd, char* buffer, int length)
 	return chars_read;
 }
 
+
+// The API call to use my_wite function which is the API function for \
+write
 int my_write(int fd, char* buffer, int length)
 {
 	if((*(vec_dir)main_memory[2])[fd].open==false || (*(vec_dir)main_memory[2])[fd].type_of_open == 0){
@@ -185,19 +188,27 @@ int my_write(int fd, char* buffer, int length)
 	return bytes_written;
 }
 
+// The functoin called by my_write to perform the write operation
 int write_multiple_blocks(int fd, char* buffer, int length)
 {
+	// Navigate to the latest write index
 	int chars_written = 0;
 	int curr_block_jumps = (*(vec_dir)main_memory[2])[fd].index / (block_size*MB_TO_KB);
 	int curr_block = (*(vec_dir)main_memory[2])[fd].first_block;
 	for(int i=0;i<curr_block_jumps;i++){
 		curr_block = (*(vec_fat)main_memory[1])[curr_block];
 	}	
+	// If the current index points to a new entry, the allocate a new block to write
 	if(curr_block == -1){
 		curr_block = allocate_new_block(curr_block);
 	}
+
+	// Get the write index of the block which indicates the position to start writing
 	int write_index = (*(vec_dir)main_memory[2])[fd].index % (block_size*MB_TO_KB);
+	// Get the index in the biffer from where to start writing
 	int buf_index = 0;
+
+	// The write while loop
 	while(length > 0)
 	{
 		int size_to_write = min(block_size*MB_TO_KB - write_index,length);
@@ -216,6 +227,8 @@ int write_multiple_blocks(int fd, char* buffer, int length)
 	return chars_written;
 }
 
+// The function to allocate a new block\
+This essentially makes changes in the directory block and the FAT block
 int allocate_new_block(int curr_block)
 {
 	typeof(free_block_vec.begin()) it = find(free_block_vec.begin(),free_block_vec.end(),0);
@@ -225,6 +238,9 @@ int allocate_new_block(int curr_block)
 	return new_block;
 }
 
+// The my_copy function to exchange files between linux file system and my file system\
+If direction is 0 then the file is copied from linux fs to my file system\
+and iff direction is 1 then file is copied the other way
 void my_copy(string filename,int direction)
 {
 	int fd;
@@ -247,6 +263,8 @@ void my_copy(string filename,int direction)
 	}
 }
 
+// The copy from linux function that uses read to read file from linux\
+ and my_write to write file to mfs
 void copy_from_linux(string filename,int fd)
 {
 	int new_fd = my_open(filename,1);
@@ -259,6 +277,8 @@ void copy_from_linux(string filename,int fd)
 	my_close(new_fd);
 }
 
+// The copy to linux function that uses write to write files to linux file \
+and my_read to read file from my file system
 void copy_to_linux(string filename,int fd)
 {
 	char buffer[100];
@@ -272,6 +292,8 @@ void copy_to_linux(string filename,int fd)
 	my_close(new_fd);
 }
 
+// The cat function repeatedly uses my_read to print the data \
+to the standard output of linux using printf
 void my_cat(string filename)
 {
 	int new_fd = my_open(filename,0);
