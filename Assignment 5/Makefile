@@ -1,3 +1,12 @@
+all: master scheduler proc mmu
+	rm mq* sm*
+	touch mq1
+	touch mq2
+	touch mq3
+	touch sm1
+	touch sm2
+	touch sm3
+
 master: master.cpp
 	g++ -g -std=c++11 master.cpp -o master
 
@@ -10,7 +19,6 @@ proc: process.cpp
 mmu: mmu.cpp
 	g++ -g -std=c++11 mmu.cpp -o mmu
 
-all: master scheduler proc mmu
 
 clean: 
 	rm -f master scheduler proc mmu 
