@@ -610,6 +610,18 @@ int rm_inode(int inode_num){
     }
 }
 
+void add_to_free_blk(int blk){
+    block* new_blk = new block(blk);
+    if(super_b->fbl_end == NULL){
+        super_b->fbl_end = super_b->fbl_start = new_blk;
+    }
+    else
+    {
+        super_b->fbl_end->next = new_blk;
+        super_b->fbl_end = super_b->fbl_end->next;
+    }
+}
+
 int my_rm(int inode_num){
     inode *file = get_inode_ptr(inode_num);
 
@@ -621,6 +633,7 @@ int my_rm(int inode_num){
             return 0;
         } 
         delete[] (char*)main_memory[file->dp[i]];
+        add_to_free_blk(file->dp[i]);
     }
     for(int i=0;i<file->sip.size();i++)
     {
@@ -630,6 +643,7 @@ int my_rm(int inode_num){
             return 0;
         } 
         delete[] (char*)main_memory[file->sip[i]];
+        add_to_free_blk(file->sip[i]);
     }
     for(int i=0;i<file->dip.size();i++)
     {
@@ -641,6 +655,7 @@ int my_rm(int inode_num){
                 return 0;
             } 
             delete[] (char*)main_memory[file->dip[i][j]];
+            add_to_free_blk(file->dip[i][j]);
         }
     }
     rm_inode(inode_num);
@@ -755,8 +770,8 @@ int my_rmdir(string dirname)
             
         }
         delete (vector<dir_record>*)main_memory[dir->dp[i]];
+        add_to_free_blk(file->dp[i]);
     }
-    cout<<"deleted dp"<<endl;
     for(int i=0;i<dir->sip.size();i++)
     {
         if(dir->sip[i] == -1)
@@ -781,8 +796,8 @@ int my_rmdir(string dirname)
             
         }
         delete (vector<dir_record>*)main_memory[dir->sip[i]];
+        add_to_free_blk(file->sip[i]);
     }
-    cout<<"deleted sip"<<endl;
     for(int i=0;i<dir->dip.size();i++)
     {
         for(int k = 0;k<dir->dip[i].size();k++)
@@ -809,6 +824,7 @@ int my_rmdir(string dirname)
                 
             }
             delete (vector<dir_record>*)main_memory[dir->dip[i][k]];
+            add_to_free_blk(file->sip[i][j]);
         }
     }
     
