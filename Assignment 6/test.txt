@@ -1,2 +1,6 @@
-hello, this is the test for the alter 2 trial
-
+The data blocks of a file are maintained using index nodes or i-nodes. Each i-node will
+contain information about the data blocks, and will include 5 direct pointers, 1 singly indirect
+pointer, and 1 doubly indirect pointer. Each pointer will be 32 bits in size, and will indicate a
+block number. It will also store a type field indicating whether the file is a regular file or a
+directory, and file size in bytes. The i-nodes will be stored in Block-1 and Block-2, in
+increasing order of their numbers (i.e. i-node-0 first, followed by i-node-1, and so on).

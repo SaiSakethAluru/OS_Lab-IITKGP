@@ -14,7 +14,7 @@ using namespace std;
 #define inode_vec1 ((vector<inode>*)(main_memory[1]))
 #define inode_vec2 ((vector<inode>*)(main_memory[2]))
 
-int block_size = 1, mem_size = 64;
+int block_size = 1, mem_size = 16;
 int num_blocks;
 void** main_memory;
 int dir_per_blk;
@@ -197,7 +197,10 @@ void add_inode_to_dir(string name, int inode_num){
     }
     else
     {
-        //to do later
+        n -= (5+block_size);
+        int i = n/block_size;
+        int j = n%block_size;
+        block_num = curr_dir->dip[i][j];
     }
     dir_record temp;
     strcpy(temp.name, name.c_str());
@@ -475,7 +478,12 @@ int read_multiple_blocks(int inode_number,char* buffer,int length){
         {
             curr_block = file->sip[curr_block_jumps - 5];
         }
-        // TO do dip
+        else{
+            curr_block_jumps -= (5+block_size);
+            int i = curr_block_jumps / block_size;
+            int j = curr_block_jumps % block_size;
+            curr_block = file->dip[i][j];
+        }
        
 
         if(length < block_size*KB_TO_B)
@@ -510,7 +518,12 @@ int read_multiple_blocks(int inode_number,char* buffer,int length){
         {
             curr_block = file->sip[curr_block_jumps - 5];
         }
-        // TO do dip
+        else{
+            curr_block_jumps -= (5+block_size);
+            int i = curr_block_jumps / block_size;
+            int j = curr_block_jumps % block_size;
+            curr_block = file->dip[i][j];
+        }
 		// Determine data left to read in last block
 		int size_to_read = min(block_size*MB_TO_KB - read_index,length);
 		size_to_read = min(size_to_read,file->size-file->index);
@@ -552,7 +565,7 @@ int write_multiple_blocks(int fd, char* buffer, int length)
 	while(length > 0)
 	{
         int curr_block_jumps = file->index / (block_size*KB_TO_B);
-
+        // cout<<"curr_blcok_jumps = "<<curr_block_jumps<<endl;
 
         if(curr_block_jumps<5)
         {
@@ -561,6 +574,12 @@ int write_multiple_blocks(int fd, char* buffer, int length)
         else if(curr_block_jumps>=5 && curr_block_jumps<(file->sip.size()+5))
         {
             curr_block = file->sip[curr_block_jumps - 5];
+        }
+        else{
+            curr_block_jumps -= (5+block_size);
+            int i = curr_block_jumps / block_size;
+            int j = curr_block_jumps % block_size;
+            curr_block = file->dip[i][j];
         }
 
         // If the current index points to a new entry, the allocate a new block to write
@@ -577,6 +596,12 @@ int write_multiple_blocks(int fd, char* buffer, int length)
             {
                 file->sip[curr_block_jumps - 5]  = curr_block;
             }
+            else{
+                curr_block_jumps -= (5+block_size);
+                int i = curr_block_jumps / block_size;
+                int j = curr_block_jumps % block_size;
+                file->dip[i][j] = curr_block;
+            }
         }
 
         // Get the write index of the block which indicates the position to start writing
@@ -586,7 +611,7 @@ int write_multiple_blocks(int fd, char* buffer, int length)
 	// The write while loop
 		int size_to_write = min(block_size*MB_TO_KB - write_index,length);
 		memcpy((char *)main_memory[curr_block]+write_index,buffer+buf_index,size_to_write);
-		// //cout<<"written: "<<(char *)main_memory[curr_block]+write_index<<endl;
+		// cout<<"written: "<<(char *)main_memory[curr_block]+write_index<<endl;
 		chars_written += size_to_write;
 		buf_index += size_to_write;
 		file->index += size_to_write;
@@ -729,7 +754,7 @@ int find_file2(string filename){
 
 int my_rmdir(string dirname)
 {
-    cout<<"Engtered rmdir for \""<<dirname<<"\""<<endl;
+    // cout<<"Engtered rmdir for \""<<dirname<<"\""<<endl;
     int dir_inode = find_file2(dirname);
     inode* dir = get_inode_ptr(dir_inode);
     // cout<<dir->name<<endl;
@@ -770,7 +795,7 @@ int my_rmdir(string dirname)
             
         }
         delete (vector<dir_record>*)main_memory[dir->dp[i]];
-        add_to_free_blk(file->dp[i]);
+        add_to_free_blk(dir->dp[i]);
     }
     for(int i=0;i<dir->sip.size();i++)
     {
@@ -796,7 +821,7 @@ int my_rmdir(string dirname)
             
         }
         delete (vector<dir_record>*)main_memory[dir->sip[i]];
-        add_to_free_blk(file->sip[i]);
+        add_to_free_blk(dir->sip[i]);
     }
     for(int i=0;i<dir->dip.size();i++)
     {
@@ -824,7 +849,7 @@ int my_rmdir(string dirname)
                 
             }
             delete (vector<dir_record>*)main_memory[dir->dip[i][k]];
-            add_to_free_blk(file->sip[i][j]);
+            add_to_free_blk(dir->dip[i][k]);
         }
     }
     
@@ -839,9 +864,10 @@ void copy_from_linux(string filename,int fd)
 {
 	int new_fd = my_open(filename,1);
 	char buffer[101];
-	while(read(fd,buffer,100)>0){
+    int n;
+	while((n=read(fd,buffer,100))>0){
 		// //cout<<"writing from linux "<<buffer<<"-----------------------"<<endl;
-		my_write(new_fd,buffer,100);
+		my_write(new_fd,buffer,n);
 		bzero(buffer,101);
 	}
 	my_close(new_fd);
@@ -892,10 +918,11 @@ void my_cat(string filename)
 	bzero(buffer,101);
 	int n;
 	while((n=my_read(new_fd,buffer,100))>0){
+        buffer[n] = '\0';
 		printf("%s",buffer);
 		bzero(buffer,101);
 	}
-	//cout<<endl;
+	cout<<endl;
 	my_close(new_fd);
 }
 
