@@ -1,8 +1,10 @@
+all: myalter2 myfat
+	
 myalter2: libalter2.a myprog.cpp
-	g++ -g myprog.cpp -L. -lalter2 -o myprog
+	g++ -g myprog.cpp -L. -lalter2 -o myalter2
 
-myfat: fat.o libfat.a myprog.cpp
-	g++ -g myprog.cpp -L. -lfat -o myprog
+myfat: fat.o libfat.a myprog_fat.cpp
+	g++ -g myprog_fat.cpp -L. -lfat -o myfat
 
 libfat.a: fat.o
 	ar -rcs libfat.a fat.o
@@ -17,7 +19,9 @@ fat.o: fat.cpp myfat.hpp
 	g++ -g -c fat.cpp
 
 clean_fat:
-	rm fat.o libfat.a myprog
+	rm fat.o libfat.a myfat
 
 clean_alter2:
-	rm libalter2.a myprog alter2_trial.o 
+	rm libalter2.a myalter2 alter2_trial.o 
+
+clean: clean_fat clean_alter2
