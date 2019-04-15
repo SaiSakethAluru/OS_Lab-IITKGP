@@ -50,8 +50,6 @@ int main()
 
 	// copy test file from linux fs to mfs
 	my_copy("test.txt",0);
-	int a;
-	cin>>a;
 	my_copy("test.txt",1);
 	// Print the newly copied file
 	my_cat("test.txt");
