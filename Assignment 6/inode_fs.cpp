@@ -5,28 +5,32 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+// Include our library header
 #include "inode_fs.hpp"
 using namespace std;
-
+// Conversion constants
 #define MB_TO_KB 1024
 #define KB_TO_B 1024
+// typecast definitions
 #define MAX_INODE_NUM (((super_block*)main_memory[0])->inodes_per_blk)
 #define super_b ((super_block*)main_memory[0])
 #define inode_vec1 ((vector<inode>*)(main_memory[1]))
 #define inode_vec2 ((vector<inode>*)(main_memory[2]))
 
+// Global variables for main memory
 int block_size = 1, mem_size = 16;
 int num_blocks;
 void** main_memory;
 int dir_per_blk;
 
+// Structure of a block
 class block{
     public:
     int val;
     block* next;
     block(int val): val(val), next(NULL) {}
 };
-
+// Structure of an inode
 class inode{
     public:
     string name;
@@ -50,13 +54,13 @@ class inode{
         this->dip.resize ((block_size*KB_TO_B)/4, (vector<int>(block_size*KB_TO_B/4, -1)));
     }
 };
-
+// Structure of a directory node
 class dir_record{
     public:
     int16_t inode_number;
     char name[14];
 };
-
+// Structure of main_memory[0] --> super block
 class super_block{
     public:
     int num_blocks;
@@ -67,29 +71,32 @@ class super_block{
     super_block(int n): num_blocks(n) {}
 };
 
-
+// Forward declarations for local (non-api) functions
 int read_multiple_blocks(int inode_num,char* buffer,int length);
 int write_multiple_blocks(int inode_num,char* buffer,int length);
 int my_mkdir(string dirname);
 inode* get_inode_ptr(int i);
 
+// init function -> used to declare and allocate memory in mainmemory.
+// Populates some values in super block as well
+// Creates root directory
 int init(int bsize, int memsize){
-    //cout<<"Entered init"<<endl;
     block_size = bsize;
     mem_size = memsize;
     num_blocks = mem_size*MB_TO_KB/block_size;
+    // Initialise main memory
     main_memory = new void* [num_blocks];
-
+    // Make all blocks starting from index 3 initially null pointers. These are the data blocks
     for(int i=3;i<num_blocks;i++)
     {
-        // main_memory[i] = new char[KB_TO_B*block_size];
         main_memory[i] = NULL;
     }
+    // Allocate memory to super block
     main_memory[0] = new super_block(num_blocks);
+    // Pointer for head of free blocks linkedlist
     super_b->fbl_start = new block(3);
     super_b->fbl_end = super_b->fbl_start;
-    //cout<<"Allocates super block and the first "<<endl;
-    
+    // Append all the blocks to the linked list's head
     block* temp;
     for(int i=4;i<num_blocks;i++)
     {
@@ -97,40 +104,43 @@ int init(int bsize, int memsize){
         super_b->fbl_end->next = temp;
         super_b->fbl_end = super_b->fbl_end->next;
     }
-    
+    // Constants used in file system
     super_b->inodes_per_blk = block_size*KB_TO_B/sizeof(inode);
-    
+    // Initialise vectors in main_memory indices 1 and 2 --> contain the inodes
     main_memory[1] = new vector<inode>;
     main_memory[2] = new vector<inode>;
-    //cout<<"Allocated block 1 and block 2 of main memory"<<endl;
     dir_per_blk = block_size*KB_TO_B/sizeof(dir_record);
+    // Create the root directory, with parent pointing to -1.
     super_b->curr_dir = -1;
-    //cout<<"Before calling my_mkdir in root"<<endl;
     int root_block = my_mkdir("root");
-    //cout<<"after calling my_mkdir in root"<<endl;
+    // Make root as the current directory initially
     super_b->curr_dir = root_block;
-    // inode_list[new_block]->dir->    
 }
-
+// Function to get a new inode number. Depending on the current inode sizes, the inode
+// is allocated either from block 1 or from block 2. If no space is available, then a -1 is returned
 int get_new_inode_num(){
+    // If block 1 is full
     if(inode_vec1->size() == MAX_INODE_NUM)
     {
+        // If block 2 is also full -> no space, return -1
         if(inode_vec2->size() == MAX_INODE_NUM)
         {
             return -1;
         }
         else
         {
+            // Allocate from block 2 if 1 is full and 2 is not full
             return MAX_INODE_NUM + inode_vec2->size();
         }
     }    
     else
     {
+        // Allocate from block 1 if it is not full
         return inode_vec1->size();
     }
     
 }
-
+// Function to get a new free block from head of linked list maintained in super block
 int get_new_block(){
     if(super_b->fbl_start == super_b->fbl_end)
         return -1;
@@ -139,7 +149,7 @@ int get_new_block(){
     super_b->fbl_start =super_b->fbl_start->next;
     return val; 
 }
-
+// Push an inode in the inode vectors.
 int push_inode(inode new_node)
 {
     if(inode_vec1->size() == MAX_INODE_NUM)
@@ -151,48 +161,53 @@ int push_inode(inode new_node)
         else
         {
             inode_vec2->push_back(new_node);
-            // return inode_vec2->size();
             return 0;
         }
     }    
     else
     {
         inode_vec1->push_back(new_node);
-        // return inode_vec1->size();
         return 0;
     }
 }
-
+// Get the inode given the inode number
 inode get_inode(int i){
+    // If it is in block 2
     if(i>MAX_INODE_NUM)
     {
         i = i-MAX_INODE_NUM;
         return (*(inode_vec2))[i];
     }    
+    // Else if it is block 1
     else
     {
         return (*(inode_vec1))[i];
     }
 }
 
-
+// Add an directory entry to a block in directory's inode
 void add_inode_to_dir(string name, int inode_num){
+    // Skip in case of root directory creation
     if(super_b->curr_dir == -1)
         return;
     int i = super_b->curr_dir;  
+    // Get the inode of the current directory
     inode *curr_dir = get_inode_ptr(i);
 
-
+    // Check the blocks in current_directory and calculate where to add the new file
     int n = curr_dir->num_blks;
     int block_num;
+    // If it can be added to one of direct pointers, add it there
     if(n<=5)
     {
         block_num = curr_dir->dp[n-1];
     }
+    // Else check the singly indirect pointer
     else if (n>5 && n<=curr_dir->sip.size()+5)
     {
         block_num = curr_dir->sip[n-5-1];
     }
+    // Else go for the double indirect pointer
     else
     {
         n -= (5+block_size);
@@ -200,24 +215,28 @@ void add_inode_to_dir(string name, int inode_num){
         int j = n%block_size;
         block_num = curr_dir->dip[i][j];
     }
+    // Add the directory record to the block calculated
     dir_record temp;
     strcpy(temp.name, name.c_str());
     temp.inode_number = inode_num;
     (*(vector<dir_record>*)(main_memory[block_num])).push_back(temp);
     
 }
-
+// API Function to create directory with given name
 int my_mkdir(string dirname){    
+    // Get the current directory
     int prev_dir_no=super_b->curr_dir;
+    // Create a new inode with given name and directory type
     inode new_node(dirname, 1);
+    //  Get a new inode number to give to this
     new_node.inode_number = get_new_inode_num();
+    // Get a new free block and allocate to the first direct pointer of the directory
     int new_blk_no = get_new_block();
     new_node.dp[0] = new_blk_no;
     new_node.num_blks++;
-
+    // Initialise this free block
     main_memory[new_blk_no] = new vector<dir_record>;
-
-
+    // Create two directory records for . and ..
     dir_record  record = *(new dir_record); 
     strcpy(record.name,".");
     record.inode_number = (int16_t)new_node.inode_number;
@@ -227,20 +246,21 @@ int my_mkdir(string dirname){
     strcpy(prev_dir.name, "..");
     prev_dir.inode_number = (int16_t)prev_dir_no;
     ((vector<dir_record>*)(main_memory[new_blk_no]))->push_back(prev_dir);
-    
+    // Push the inode of the directory 2 in the block 1 or block 2
     push_inode(new_node);
-
+    // Add the inode for the new directory in the inode for the current directory
     add_inode_to_dir(dirname, new_node.inode_number);
+    // Return the inode number
     return new_node.inode_number;
 }
-
+// API Funtion to change directory
 int my_chdir(string dirname){
-    // Write the code for multiple directory changes
+    // Get current directory
     int i = super_b->curr_dir;  
+    // Get inode for current Directory
     inode curr_dir = get_inode(i);
-
-    // dir_inode* curr = inode_list[i]->dir;
     int new_dir_inode_num = -1;
+    // Look for the directory name in the current directory's inode's direct pointers
     for(int i=0;i<5;i++)
     {
         int block_num = curr_dir.dp[i];
@@ -252,12 +272,14 @@ int my_chdir(string dirname){
             if(strcmp(blk_data[j].name, dirname.c_str()) == 0)
             {
                 int new_dir_inode_num = -1;
+                // Change current directory in super block
                 super_b->curr_dir = blk_data[j].inode_number;
                 return super_b->curr_dir;
             }
         }
     }
 
+    // Look for the directory name in the current directory's inode's single indirect pointers
     for(int i=0;i<curr_dir.sip.size();i++)
     {
         int block_num = curr_dir.sip[i];
@@ -270,12 +292,14 @@ int my_chdir(string dirname){
             if(strcmp(blk_data[j].name, dirname.c_str()) == 0)
             {
                 int new_dir_inode_num = -1;
+                // Change current directory in super block
                 super_b->curr_dir = blk_data[j].inode_number;
                 return super_b->curr_dir;
             }
         }
     }
 
+    // Look for the directory name in the current directory's inode's double indirect pointers
     for(int i=0;i<curr_dir.dip.size();i++)
     {
         for(int j=0;j>curr_dir.dip[i].size();j++)
@@ -290,23 +314,24 @@ int my_chdir(string dirname){
                 if(strcmp(blk_data[k].name, dirname.c_str()) == 0)
                 {
                     int new_dir_inode_num = -1;
+                    // Change current directory in super block
                     super_b->curr_dir = blk_data[k].inode_number;
                     return super_b->curr_dir;
                 }
             } 
         }
     }
-    // Check if actually a directory
-    //cout<<"Directory change failed. Incorrect Name"<<endl;
+    // Check if actually a directory. If not, print error message and return -1
+    cout<<"Directory change failed. Incorrect Name"<<endl;
     return -1;
 }
 
-
+// Search for inode number given a file name
 int find_file(string filename){
     int i = super_b->curr_dir;  
+    // Get inode for current directory
     inode curr_dir = get_inode(i);
-
-    // dir_inode* curr = inode_list[i]->dir;
+    // Look for file name in current directory inode's direct pointers
     for(int i=0;i<5;i++)
     {
         int block_num = curr_dir.dp[i];
@@ -324,6 +349,7 @@ int find_file(string filename){
         }
     }
 
+    // Look for file name in current directory inode's single indirect pointers
     for(int i=0;i<curr_dir.sip.size();i++)
     {
         int block_num = curr_dir.sip[i];
@@ -342,6 +368,7 @@ int find_file(string filename){
         }
     }
 
+    // Look for file name in current directory inode's double indirect pointers
     for(int i=0;i<curr_dir.dip.size();i++)
     {
         for(int j=0;j>curr_dir.dip[i].size();j++)
@@ -363,50 +390,50 @@ int find_file(string filename){
         }
     }
 }
-
+// API function for my_open
 int my_open(string filename, int type_of_open){
     int curr_dir_num = super_b->curr_dir;
     
     int flag = find_file(filename);
-
+    // If opening in read only mode and file is not found, return -1
     if(type_of_open == 0 && flag == -1)
     {
-        //cout<<"File not found"<<endl;
         return -1;
     }
-
+    // If opening in read only mode and file is found
     if(type_of_open == 0 && flag != -1)
     {
         inode *file_inode = get_inode_ptr(flag);
-
+        // If the filename is that of a directory
         if(file_inode->type == 1)
         {
-            //cout<<"File is a directory"<<endl;
+            // cout<<"File is a directory"<<endl;
             return -1;
         }
-
+        // If it is a valid file, mark it as opened in read only and return the inode number as file descriptor
         file_inode->open = 1;
         file_inode->type_of_open = 0;
         return flag;
     }
-
+    // If it is opened in write only mode and file is in the fs
     if(type_of_open == 1 && flag != -1)
     {
         inode* file_inode = get_inode_ptr(flag);
-
+        // Check if it is a directory
         if(file_inode->type == 1)
         {
             //cout<<"File is a directory"<<endl;
             return -1;
         }
-
+        // Mark it as opened and reset index and size
+        // Return inode number as file descriptor 
         file_inode->open = 1;
         file_inode->type_of_open = 1;
         file_inode->index = 0;
         file_inode->size = 0;
         return flag;
     }
-
+    // Create a new file if in write mode and file not found
     inode new_file_inode = *(new inode(filename,0));
     new_file_inode.size = 0;
     new_file_inode.open = 1;
@@ -415,10 +442,11 @@ int my_open(string filename, int type_of_open){
     new_file_inode.type = 0;
     new_file_inode.inode_number = get_new_inode_num();
     push_inode(new_file_inode);
-
+    // Add new file to current directory and return inode number as fd
     add_inode_to_dir(filename,new_file_inode.inode_number);
     return new_file_inode.inode_number;
 }
+// Given an inode number, return a pointer to it
 inode* get_inode_ptr(int i){
     if(i>MAX_INODE_NUM)
     {
@@ -431,14 +459,16 @@ inode* get_inode_ptr(int i){
     }
 }
 
-
+// Close the file, given its inode number
 int my_close(int inode_num){
+    // Get pointer to the inode
     inode *curr = get_inode_ptr(inode_num);
+    // Check if it is a directory
     if(curr->type == 1)
     {
-        //cout<<"Trying to close a directory"<<endl;
         return -1;
     }
+    // Mark the file as closed and reset its read/write indexs
     curr->open = 0;
     curr->index = 0;
     return 0;    
@@ -447,7 +477,6 @@ int my_close(int inode_num){
 int my_read(int inode_number, char* buffer, int len){
     inode file = get_inode(inode_number);
     if(file.open==0 || file.type_of_open == 1){
-        //cout<<"my_read returned preemptively when type is "<<file.open<<endl;
 		return -1;
 	}
 	else{
