@@ -473,27 +473,37 @@ int my_close(int inode_num){
     curr->index = 0;
     return 0;    
 }
-
+/*
+    The my_read function 
+*/
 int my_read(int inode_number, char* buffer, int len){
-    inode file = get_inode(inode_number);
+    inode file = get_inode(inode_number);// Get the file to read
     if(file.open==0 || file.type_of_open == 1){
+        // If the file is not open ot not for reading, return
+        //cout<<"my_read returned preemptively when type is "<<file.open<<endl;
 		return -1;
 	}
 	else{
+        // Eles read for the required duration
 		return read_multiple_blocks(inode_number,buffer,len);			
 	}
 }
 
+/*
+    The stub function for read multiple blocks
+*/ 
 int read_multiple_blocks(int inode_number,char* buffer,int length){
+
+    // Get the chars read
     int chars_read = 0;
+
     inode *file = get_inode_ptr(inode_number);
     int buf_index = 0;
     int  read_index = file->index % (block_size*KB_TO_B);
     
 
-    // //cout<<"Before entering the while loop"<<endl;
     while(1){
-        //cout<<"After entering the while loop"<<endl;
+        // Get the block and the index as the place to read
         int curr_block_jumps = file->index / (block_size*KB_TO_B);
         int curr_block;
 
@@ -512,14 +522,14 @@ int read_multiple_blocks(int inode_number,char* buffer,int length){
             curr_block = file->dip[i][j];
         }
        
-
+        // If length is less than block size, break the while loop
         if(length < block_size*KB_TO_B)
             break;
 		// Determine the size to read
 		int size_to_read = min(block_size*KB_TO_B - read_index,length);
+        // Write the read bytes to the buffer
 		memcpy(buffer+buf_index,(char *)(main_memory[curr_block])+read_index,size_to_read);
 
-        // //cout<<"Just wrote\""<<((char *)(main_memory[curr_block])+read_index)<<"\" to the buffer"<<endl;
 		// Update file index and characters read count
 		chars_read += size_to_read;
 		buf_index += size_to_read;
@@ -532,6 +542,7 @@ int read_multiple_blocks(int inode_number,char* buffer,int length){
 			break;
 		}
 	}
+    // Same as the while loop, but for the last block
     read_index = file->index % (block_size*MB_TO_KB);
     if(length > 0){
         int curr_block_jumps = file->index / (block_size*KB_TO_B);
@@ -556,7 +567,6 @@ int read_multiple_blocks(int inode_number,char* buffer,int length){
 		size_to_read = min(size_to_read,file->size-file->index);
 		memcpy(buffer+buf_index,(char *)main_memory[curr_block]+read_index,size_to_read);
 
-        //cout<<"Just read now\""<<((char *)(main_memory[curr_block])+read_index)<<"\""<<endl<<"size to read "<<size_to_read<<endl;
         
 		// Update characters read and file index
 		chars_read += size_to_read;
@@ -567,32 +577,43 @@ int read_multiple_blocks(int inode_number,char* buffer,int length){
     return chars_read;
 }
 
-
+/*
+    The my_write function
+*/
 int my_write(int inode_number, char* buffer, int len)
 {
+    // Get the file pointer
     inode *file = get_inode_ptr(inode_number);
+
+
     if(file->open==0 || file->type_of_open == 0){
+        // return with an error if the file is either closed or not for writing
 		return -1;
 	}
+
 	else{
+        // write to the block, increment the size of the file and return
         int bytes_written = write_multiple_blocks(inode_number,buffer,len);			
         file->size += bytes_written;
 		return bytes_written;
 	}
 }
 
+/*
+    The stub function to the my_write function
+*/
 int write_multiple_blocks(int fd, char* buffer, int length)
 {
 	// Navigate to the latest write index
+    // get the file to which write a block
     inode* file = get_inode_ptr(fd);
-
 	int chars_written = 0;
     int curr_block;
     int buf_index = 0;
 	while(length > 0)
 	{
+        // Find the first free block to write to
         int curr_block_jumps = file->index / (block_size*KB_TO_B);
-        // cout<<"curr_blcok_jumps = "<<curr_block_jumps<<endl;
 
         if(curr_block_jumps<5)
         {
@@ -633,12 +654,12 @@ int write_multiple_blocks(int fd, char* buffer, int length)
 
         // Get the write index of the block which indicates the position to start writing
         int write_index = file->index % (block_size*KB_TO_B);
-        // Get the index in the biffer from where to start writing
 
-	// The write while loop
+        // Ge thow many bytes to write
 		int size_to_write = min(block_size*MB_TO_KB - write_index,length);
+        // Copy the bytes in the buffer to memory
 		memcpy((char *)main_memory[curr_block]+write_index,buffer+buf_index,size_to_write);
-		// cout<<"written: "<<(char *)main_memory[curr_block]+write_index<<endl;
+
 		chars_written += size_to_write;
 		buf_index += size_to_write;
 		file->index += size_to_write;
@@ -646,11 +667,14 @@ int write_multiple_blocks(int fd, char* buffer, int length)
 		if(length <=0){
 			break;
 		}
+        // Set the write index to zero
 		write_index = 0;
 	}
+    // Return the number of bytes written
 	return chars_written;
 }
 
+/*Function to remove inode from the list*/ 
 int rm_inode(int inode_num){
     if(inode_num > MAX_INODE_NUM)
     {
@@ -662,6 +686,9 @@ int rm_inode(int inode_num){
     }
 }
 
+/*
+    Add the block specified by blk to the list of free blocks
+*/
 void add_to_free_blk(int blk){
     block* new_blk = new block(blk);
     if(super_b->fbl_end == NULL){
@@ -673,12 +700,17 @@ void add_to_free_blk(int blk){
         super_b->fbl_end = super_b->fbl_end->next;
     }
 }
-
+/*
+    This function is not a accurate simulation of the rm function for this file system
+    but is a stub function for removing files specified by the my_rmdir function
+*/
 int my_rm(int inode_num){
     inode *file = get_inode_ptr(inode_num);
 
+    // Delete a file in the direct pointer blocks and add free blocks to the list of unallocated blocks
     for(int i=0;i<5;i++)
     {
+        // If free block reached then remove hte node form the inode list and exit
         if(file->dp[i] == -1)
         {
             rm_inode(inode_num);
@@ -687,6 +719,7 @@ int my_rm(int inode_num){
         delete[] (char*)main_memory[file->dp[i]];
         add_to_free_blk(file->dp[i]);
     }
+    // Same as for dp but now for sip
     for(int i=0;i<file->sip.size();i++)
     {
         if(file->sip[i] == -1)
@@ -697,6 +730,7 @@ int my_rm(int inode_num){
         delete[] (char*)main_memory[file->sip[i]];
         add_to_free_blk(file->sip[i]);
     }
+    // Same as dp but now for doubly indirect pointer
     for(int i=0;i<file->dip.size();i++)
     {
         for(int j=0;j<file->dip[i].size();j++)
@@ -714,6 +748,11 @@ int my_rm(int inode_num){
     return 0;
 }
 
+/*
+    The find file to function return the file inode number in the current directory and 
+    remoevs this file from the current directory. 
+    As a rule, this is only used with the rm_dir function
+*/
 int find_file2(string filename){
     int i = super_b->curr_dir;  
     inode curr_dir = get_inode(i);
@@ -779,30 +818,36 @@ int find_file2(string filename){
     }
 }
 
+
+/*
+    The my_rmdir function takes in the dirname as an argument and uses the current block to get
+    the list of files and recursively deletes the directories
+*/
 int my_rmdir(string dirname)
 {
-    // cout<<"Engtered rmdir for \""<<dirname<<"\""<<endl;
     int dir_inode = find_file2(dirname);
     inode* dir = get_inode_ptr(dir_inode);
-    // cout<<dir->name<<endl;
-    // cout<<super_b->curr_dir<<endl;
-    // cout<<"chdir "<<my_chdir(dir->name)<<endl;
-    // cout<<super_b->curr_dir<<endl;
-    // my_ls();
-    // cout<<"received inode_pointer"<<endl;
+
+    // If the name specified is not a directory
     if(dir->type == 0)
     {
         return -1;
     }
 
+    // Delete the files specified buy the direct pointers
     for(int i=0;i<5;i++)
     {
         if(dir->dp[i] == -1)
         {
+            // If an emoty block is reached
            rm_inode(dir->inode_number);
            return 0;
         }
+
+        // Get the vector that stores the directory records specified by that block
         vector<dir_record> temp_rec = *((vector<dir_record>*)main_memory[dir->dp[i]]);
+
+        // Recursively delete the directories and files
         for(int j= 0; j<temp_rec.size();j++)
         {
             int temp_inode_num = (int)temp_rec[j].inode_number;
@@ -812,18 +857,23 @@ int my_rmdir(string dirname)
                 if(strcmp(temp_rec[j].name, ".") != 0 && strcmp(temp_rec[j].name, "..") != 0 )
                 {
                     cout<<temp_rec[j].name<<endl;
+                    // REcursively call rm_dir
                     my_rmdir(temp_rec[j].name);
                 }
             }
             else
             {
+                // Delete a file
                 my_rm(temp_inode_num);
             }
             
         }
+        // Delete the block 
         delete (vector<dir_record>*)main_memory[dir->dp[i]];
+        // add the deleted block to a list of free blocks
         add_to_free_blk(dir->dp[i]);
     }
+    // Same as above but for singe indirect pointer
     for(int i=0;i<dir->sip.size();i++)
     {
         if(dir->sip[i] == -1)
@@ -850,6 +900,8 @@ int my_rmdir(string dirname)
         delete (vector<dir_record>*)main_memory[dir->sip[i]];
         add_to_free_blk(dir->sip[i]);
     }
+
+    // Same as above but for double indirect pointer
     for(int i=0;i<dir->dip.size();i++)
     {
         for(int k = 0;k<dir->dip[i].size();k++)
@@ -915,6 +967,10 @@ void copy_to_linux(string filename,int fd)
 	my_close(new_fd);
 }
 
+/*
+    If direction is 0 then copy file in linux to mfs
+    else, copy in the other direction
+*/
 void my_copy(string filename,int direction)
 {
 	int fd;
@@ -936,15 +992,20 @@ void my_copy(string filename,int direction)
 		close(fd);
 	}
 }
+
 // The cat function repeatedly uses my_read to print the data \
 to the standard output of linux using printf
 void my_cat(string filename)
 {
+    //Open the file in mfs
 	int new_fd = my_open(filename,0);
 	char buffer[101];
 	bzero(buffer,101);
 	int n;
+    // File not EOF, read from mfs
 	while((n=my_read(new_fd,buffer,100))>0){
+
+        // write to stdout
         buffer[n] = '\0';
 		printf("%s",buffer);
 		bzero(buffer,101);
@@ -953,10 +1014,17 @@ void my_cat(string filename)
 	my_close(new_fd);
 }
 
+/*  
+    function that prints the contents of the current directory.
+    This function is mainly used for debugging but is an essential part of a file system
+*/
 void my_ls(){
+
+    // Get the directory inode pointer
     int dir_node = super_b->curr_dir;
     inode* dir = get_inode_ptr(dir_node);
 
+    // Print the contents of the blocks stored by the records in the direct pointers
     for(int i=0;i<5;i++)
     {
         if(dir->dp[i] == -1)
@@ -966,10 +1034,10 @@ void my_ls(){
         vector<dir_record> temp_rec = *((vector<dir_record>*)main_memory[dir->dp[i]]);
         for(int j= 0; j<temp_rec.size();j++)
         {
-            // int temp_inode_num = (int)temp_rec[j].inode_number;
             cout<<temp_rec[j].name<<endl;
         }
     }
+    // Print the contents of the blocks stored by the records in the suingle indirect pointers
     for(int i=0;i<dir->sip.size();i++)
     {
         if(dir->sip[i] == -1)
@@ -984,6 +1052,8 @@ void my_ls(){
                        
         }
     }
+
+    // Print the contents of the blocks stored by the records in the double indirect pointers
     for(int i=0;i<dir->dip.size();i++)
     {
         for(int k = 0;k<dir->dip[i].size();k++)
