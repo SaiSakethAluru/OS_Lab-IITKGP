@@ -1,6 +1,6 @@
 #include <iostream>
 #include <bits/stdc++.h>
-#include "alter2_trial.hpp"
+#include "inode_fs.hpp"
 using namespace std;
 
 int main()
